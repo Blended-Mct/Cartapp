@@ -1,0 +1,10 @@
+{
+  "name": "cart-cost-calculator",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Instant cost estimator for coffee and ice cream catering cart hire.",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "start": "npx --yes http-server . -p 8080 -c-1 -o"
+  }
+}

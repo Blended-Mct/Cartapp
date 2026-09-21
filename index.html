@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cart Hire Cost Calculator</title>
+<meta name="description" content="Instant cost estimate for hiring our coffee and ice cream catering carts.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☕</text></svg>">
+<link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap header-inner">
+    <div>
+      <p class="brand" data-business-name>Your Catering Co.</p>
+      <p class="tagline" data-business-tagline>Coffee &amp; ice cream carts for events</p>
+    </div>
+    <button type="button" class="theme-toggle" id="themeToggle" aria-label="Switch colour theme">
+      <span aria-hidden="true">◐</span>
+    </button>
+  </div>
+</header>
+
+<main class="wrap layout">
+
+  <!-- ------------------------------------------------ the customer's form -->
+  <form class="panel form" id="quoteForm" novalidate>
+    <h1 class="page-title">What will my cart cost?</h1>
+    <p class="page-intro">
+      Tell us about your event and the price updates as you type.
+    </p>
+
+    <!-- Cart choice -->
+    <fieldset class="field">
+      <legend class="label">1. Choose your cart</legend>
+      <div class="cart-options" id="cartOptions" role="radiogroup"></div>
+    </fieldset>
+
+    <!-- Event details -->
+    <fieldset class="field">
+      <legend class="label">2. Your event</legend>
+
+      <div class="grid-2">
+        <div class="input-group">
+          <label for="date"><span>Event date</span></label>
+          <input type="date" id="date" name="date">
+          <p class="hint" id="dateHint">Weekends and peak season cost a little more.</p>
+        </div>
+
+        <div class="input-group">
+          <label for="guests"><span>Number of guests</span></label>
+          <input type="number" id="guests" name="guests" inputmode="numeric" min="10" max="2000" step="1" value="100">
+          <p class="hint" id="servingsHint"></p>
+        </div>
+
+        <div class="input-group">
+          <label for="hours"><span>Service hours</span> <span class="value-badge" id="hoursValue">3 h</span></label>
+          <input type="range" id="hours" name="hours" min="2" max="12" step="0.5" value="3">
+          <p class="hint">How long the cart serves your guests.</p>
+        </div>
+
+        <div class="input-group">
+          <label for="staff"><span>Staff on the cart</span> <span class="value-badge" id="staffValue">1</span></label>
+          <input type="range" id="staff" name="staff" min="1" max="8" step="1" value="1">
+          <p class="hint" id="staffHint">More staff means a shorter queue.</p>
+        </div>
+
+        <div class="input-group">
+          <label for="distance"><span>Distance to venue (<span data-travel-unit>km</span>)</span></label>
+          <input type="number" id="distance" name="distance" inputmode="numeric" min="0" max="500" step="1" value="15">
+          <p class="hint" id="travelHint"></p>
+        </div>
+
+        <div class="input-group check-standalone">
+          <label class="checkbox">
+            <input type="checkbox" id="isHoliday" name="isHoliday">
+            <span>My event is on a public holiday</span>
+          </label>
+        </div>
+      </div>
+    </fieldset>
+
+    <!-- Add-ons -->
+    <fieldset class="field">
+      <legend class="label">3. Add-ons <span class="label-note">optional</span></legend>
+      <div class="addons" id="addons"></div>
+    </fieldset>
+
+    <button type="button" class="btn btn-ghost" id="resetBtn">Start over</button>
+  </form>
+
+  <!-- ------------------------------------------------------- the estimate -->
+  <aside class="panel quote" id="quote" aria-live="polite">
+    <div class="quote-head">
+      <p class="quote-eyebrow">Your estimate</p>
+      <p class="quote-total" id="quoteTotal">—</p>
+      <p class="quote-sub" id="quoteSub"></p>
+    </div>
+
+    <div class="quote-warnings" id="quoteWarnings"></div>
+
+    <table class="breakdown">
+      <caption class="sr-only">Cost breakdown</caption>
+      <tbody id="breakdownBody"></tbody>
+      <tfoot id="breakdownFoot"></tfoot>
+    </table>
+
+    <p class="disclaimer" data-business-disclaimer></p>
+
+    <button type="button" class="btn btn-primary" id="printBtn">Print / save as PDF</button>
+  </aside>
+
+</main>
+
+<!-- Running total, pinned to the bottom of the screen on phones -->
+<div class="mobile-bar" id="mobileBar" hidden>
+  <div class="mobile-bar-inner">
+    <div>
+      <p class="mobile-bar-label">Estimated total</p>
+      <p class="mobile-bar-total" id="mobileBarTotal">—</p>
+    </div>
+    <button type="button" class="btn btn-primary mobile-bar-btn" id="mobileBarBtn">
+      See breakdown
+    </button>
+  </div>
+</div>
+
+
+<footer class="site-footer">
+  <p class="wrap">
+    <span data-business-name>Your Catering Co.</span> — prices shown are an estimate,
+    not a binding quotation.
+  </p>
+</footer>
+
+<script src="assets/js/pricing-config.js"></script>
+<script src="assets/js/calculator.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>
