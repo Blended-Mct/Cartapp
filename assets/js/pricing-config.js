@@ -136,8 +136,8 @@ const PRICING = {
       id: "creamy_espresso", group: "drinks", name: "Creamy espresso",
       name_ar: "إسبريسو بالكريمة",
       pricePerCup: 1.5,
-      note: "Our ice cream blended with espresso",
-      note_ar: "آيس كريم ممزوج بالإسبريسو",
+      note: "A milkshake blended with espresso",
+      note_ar: "ميلك شيك ممزوج بالإسبريسو",
     },
     {
       id: "matcha", group: "drinks", name: "Matcha", name_ar: "ماتشا",
@@ -149,8 +149,8 @@ const PRICING = {
       id: "creamy_matcha", group: "drinks", name: "Creamy matcha",
       name_ar: "ماتشا بالكريمة",
       pricePerCup: 1.5,
-      note: "Our ice cream blended with matcha",
-      note_ar: "آيس كريم ممزوج بالماتشا",
+      note: "A milkshake blended with matcha",
+      note_ar: "ميلك شيك ممزوج بالماتشا",
     },
     {
       id: "other_drinks", group: "drinks", name: "Iced tea & hibiscus",
