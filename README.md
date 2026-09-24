@@ -260,7 +260,7 @@ The site is published to **GitHub Pages** by
 push to `main`. The tests run first and the deploy waits on them, so a mistake in
 the prices stops the deploy rather than reaching customers.
 
-The site is live at **https://kifahkruce-oss.github.io/Cartapp/**
+The site is live at **https://blended-mct.github.io/Cartapp/**
 
 ### Two things that had to be done by hand
 
@@ -298,7 +298,7 @@ configuration needed. To put it on your existing website, upload these files to
 any folder on your host, or embed it in a page with an iframe:
 
 ```html
-<iframe src="https://kifahkruce-oss.github.io/Cartapp/"
+<iframe src="https://blended-mct.github.io/Cartapp/"
         style="width:100%;height:1200px;border:0"></iframe>
 ```
 
