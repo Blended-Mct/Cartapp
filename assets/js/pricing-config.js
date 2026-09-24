@@ -1,10 +1,12 @@
 /* =============================================================================
-   PRICING CONFIG  —  THIS IS THE ONLY FILE YOU NEED TO EDIT TO CHANGE PRICES
+   BLENDED — PRICING CONFIG
    =============================================================================
-   Every number below is a real price in Omani Rials. Change them, save, and
-   reload the page. No build step, no server, nothing else to update.
+   THIS IS THE ONLY FILE YOU NEED TO EDIT TO CHANGE PRICES.
 
-   Amounts are written to 3 decimal places (baisa), e.g. 1.500 = 1 rial 500 bz.
+   Every number is in Omani Rials, written to 3 decimals (baisa):
+   1 = 1.000 OMR, 0.25 = 250 baisa.
+
+   Change a number, save, reload the page. No build step, no server.
    ========================================================================== */
 
 const PRICING = {
@@ -13,140 +15,144 @@ const PRICING = {
   business: {
     name: "Blended",
     tagline: "Ice cream · drinks · shakes",
-    // Shown under the final price. Good place for "prices are an estimate".
     disclaimer:
       "This is an instant estimate based on the details entered. " +
       "Final pricing is confirmed when your booking is agreed.",
   },
 
   /* --- Currency --------------------------------------------------------
-     currency: 3-letter ISO code. "OMR" = Omani Rial.
-     locale:   number formatting. "en-OM" English/Oman, "ar-OM" Arabic/Oman.
-     decimals: 3 for rials (baisa). Set to 2 for most other currencies.       */
+     decimals: 3 for rials (baisa). Use 2 for most other currencies.        */
   currency: "OMR",
   locale: "en-OM",
   decimals: 3,
 
-  /* --- The carts you offer ---------------------------------------------
-     basePrice        : starting price, includes the hours/servings/staff below
-     includedHours    : service hours included in basePrice
-     includedServings : scoops / shakes / drinks included in basePrice
-     includedStaff    : staff members included in basePrice
-     extraHourRate    : price for each hour beyond includedHours
-     perExtraServing  : price for each serving beyond includedServings
-     servingsPerGuest : how many servings an average guest has (1.5 = most
-                        guests take one, some take two)                      */
-  packages: [
+  /* --- What every booking starts with ---------------------------------- */
+  serviceFee: 30,          // charged once on every booking
+  serviceFeeLabel: "Cart service fee",
+  minimumCups: 50,         // smallest order we accept, in cups
+
+  /* --- How long the cart serves ---------------------------------------- */
+  duration: {
+    includedHours: 2,      // hours covered by the service fee
+    extraHourRate: 5,      // each hour beyond that
+    maxHours: 10,
+  },
+
+  /* --- Where the event is ----------------------------------------------
+     A drop-down, not a distance. Add a row for each area you cover.        */
+  locations: [
+    { id: "muscat", name: "Muscat", charge: 0 },
+    { id: "barka",  name: "Barka",  charge: 15 },
+  ],
+
+  /* --- The three carts -------------------------------------------------
+     serves: which menu groups the cart can pour. The menu below is filtered
+     by this, so a drinks cart never shows gelato.                          */
+  carts: [
     {
       id: "icecream",
       name: "Ice Cream Cart",
-      blurb: "Scoop cart — cones, cups and a toppings selection.",
+      blurb: "Gelato and soft serve, scooped to order.",
       emoji: "🍦",
-      basePrice: 280,
-      includedHours: 3,
-      includedServings: 100,
-      includedStaff: 1,
-      extraHourRate: 60,
-      perExtraServing: 1.5,
-      servingsPerGuest: 1.3,
+      serves: ["icecream"],
     },
     {
-      id: "shakes",
-      name: "Shakes & Drinks Cart",
-      blurb: "Milkshakes, smoothies and iced drinks, blended to order.",
+      id: "drinks",
+      name: "Drinks Cart",
+      blurb: "Espresso, matcha and iced drinks.",
       emoji: "🥤",
-      basePrice: 320,
-      includedHours: 3,
-      includedServings: 100,
-      includedStaff: 1,
-      extraHourRate: 70,
-      perExtraServing: 1.8,
-      servingsPerGuest: 1.5,
+      serves: ["drinks"],
     },
     {
-      id: "full",
-      name: "The Full Blend",
-      blurb: "Both carts, both crews — the whole Blended experience.",
+      id: "blend",
+      name: "The Blend",
+      blurb: "Ice cream and drinks together — the full Blended cart.",
       emoji: "🍦🥤",
-      basePrice: 550,
-      includedHours: 3,
-      includedServings: 180,
-      includedStaff: 2,
-      extraHourRate: 115,
-      perExtraServing: 1.6,
-      servingsPerGuest: 1.8,
+      serves: ["icecream", "drinks"],
     },
   ],
 
-  /* --- Staffing --------------------------------------------------------
-     extraStaffPerHour     : charged per additional staff member, per hour
-     servingsPerStaffPerHour: how fast one staff member serves. Used only to
-                              warn a customer when a booking needs more staff. */
-  staffing: {
-    extraStaffPerHour: 18,
-    servingsPerStaffPerHour: 60,
-    maxStaff: 8,
-  },
-
-  /* --- Travel ----------------------------------------------------------
-     Distance is one-way, from your base to the venue.                       */
-  travel: {
-    unit: "km",              // set to "mi" if you work in miles
-    freeRadius: 25,          // no travel charge within this distance
-    perUnit: 0.9,            // charge for each km beyond the free radius
-    chargeRoundTrip: true,   // true = distance counted there AND back
-    maxDistance: 600,
-  },
-
-  /* --- Fixed fees ------------------------------------------------------ */
-  fees: {
-    setupFee: 45,       // set-up, pack-down and equipment transport. 0 = off.
-    setupFeeLabel: "Set-up & pack-down",
-    minimumSpend: 280,  // bookings below this are topped up. 0 = off.
-  },
-
-  /* --- Date-based surcharges ------------------------------------------
-     Percentages are applied to the service cost (not travel/set-up).
-     peakMonths here covers the cooler event season, Nov–Feb.                */
-  surcharges: {
-    weekendPercent: 10,        // Friday & Saturday in Oman. 0 = off.
-    weekendDays: [5, 6],       // 0 = Sunday … 5 = Friday, 6 = Saturday
-    holidayPercent: 15,        // when the customer ticks "public holiday". 0 = off.
-    peakMonths: [11, 12, 1, 2],
-    peakMonthPercent: 8,       // 0 = off.
-    peakMonthLabel: "Peak season",
-  },
-
-  /* --- Add-ons ---------------------------------------------------------
-     type: "flat"      → charged once
-           "perGuest"  → price × number of guests
-           "perServing"→ price × estimated servings
-           "perHour"   → price × service hours
-     carts: which packages it applies to. Omit for "all carts".              */
-  addons: [
-    { id: "branding",  name: "Custom branded cart",     note: "Your event branding on the cart facade",  type: "flat",       price: 85 },
-    { id: "cups",      name: "Branded cups & sleeves",  note: "Printed with your logo",                  type: "perServing", price: 0.25 },
-    { id: "toppings",  name: "Deluxe toppings bar",     note: "12 toppings & sauces",                    type: "flat",       price: 55,  carts: ["icecream", "full"] },
-    { id: "flavours",  name: "Extra flavour range",     note: "Six additional ice cream flavours",       type: "flat",       price: 40,  carts: ["icecream", "full"] },
-    { id: "signature", name: "Signature shakes menu",   note: "Our specials, plus a shake named for the event", type: "flat", price: 45, carts: ["shakes", "full"] },
-    { id: "fruitbar",  name: "Fresh fruit smoothie bar", note: "Made-to-order fruit smoothies",          type: "flat",       price: 60,  carts: ["shakes", "full"] },
-    { id: "vegan",     name: "Vegan / dairy-free range", note: "Oat, almond & sorbet options",           type: "flat",       price: 40 },
-    { id: "generator", name: "Silent power generator",  note: "For venues with no mains power",          type: "flat",       price: 70 },
-    { id: "menuboard", name: "Hand-written menu board", note: "Illustrated board in the Blended style",  type: "flat",       price: 30 },
-    { id: "host",      name: "Host / queue manager",    note: "Keeps the line moving",                   type: "perHour",    price: 14 },
+  /* --- The menu --------------------------------------------------------
+     pricePerCup : what one cup costs
+     minCups     : the smallest quantity we serve of this item. Order fewer
+                   and the minimum is charged. Leave it out for no minimum.
+     note        : the small print shown under the item                     */
+  menu: [
+    {
+      id: "gelato", group: "icecream", name: "Gelato",
+      pricePerCup: 1,
+      note: "Includes 3 toppings of your choice",
+    },
+    {
+      id: "softserve", group: "icecream", name: "Soft serve",
+      pricePerCup: 1.5, minCups: 200,
+      note: "Available for orders of 200 cups or more",
+    },
+    {
+      id: "espresso", group: "drinks", name: "Coffee — espresso base",
+      pricePerCup: 1.5,
+      note: "Espresso, americano, latte, cappuccino",
+    },
+    {
+      id: "creamy_espresso", group: "drinks", name: "Creamy espresso",
+      pricePerCup: 1.5, minCups: 50,
+      note: "Minimum 50 cups",
+    },
+    {
+      id: "matcha", group: "drinks", name: "Matcha",
+      pricePerCup: 2,
+      note: "Ceremonial grade, iced or hot",
+    },
+    {
+      id: "creamy_matcha", group: "drinks", name: "Creamy matcha",
+      pricePerCup: 1.5, minCups: 50,
+      note: "Minimum 50 cups",
+    },
+    {
+      id: "other_drinks", group: "drinks", name: "Iced tea & hibiscus",
+      pricePerCup: 1.5,
+      note: "Refreshing, caffeine-free options",
+    },
   ],
 
-  /* --- Volume discounts ------------------------------------------------
-     The best qualifying tier is applied. Leave the array empty for none.    */
-  discounts: [
-    { minSubtotal: 750,  percent: 5,  label: "Volume discount (5%)" },
-    { minSubtotal: 1300, percent: 8,  label: "Volume discount (8%)" },
-    { minSubtotal: 2200, percent: 12, label: "Volume discount (12%)" },
+  /* --- Extras charged per cup ------------------------------------------
+     appliesTo : "icecream", "drinks" or "all" — which cups it is counted on
+     minCups   : the smallest quantity billed, even if fewer cups are ordered */
+  cupExtras: [
+    {
+      id: "extra_toppings", name: "Extra toppings",
+      note: "Beyond the 3 included with gelato",
+      pricePerCup: 0.2, minCups: 50, appliesTo: "icecream",
+    },
+    {
+      id: "cookies", name: "Cookies",
+      note: "Add a cookie to each cup",
+      pricePerCup: 0.9, appliesTo: "icecream",
+    },
+    {
+      id: "branded_cups", name: "Branded cups",
+      note: "Printed with your logo or event name",
+      pricePerCup: 0.25, minCups: 50, appliesTo: "all",
+    },
+  ],
+
+  /* --- Extras charged once ---------------------------------------------- */
+  flatExtras: [
+    {
+      id: "female_server", name: "Female server",
+      note: "A female member of staff on the cart",
+      price: 15,
+    },
+    {
+      id: "branded_cart", name: "Customised branded cart",
+      note: "The cart carries your wedding, brand or event branding",
+      price: 40,
+    },
   ],
 
   /* --- Tax -------------------------------------------------------------
-     Oman VAT is 5%. Set percent to 5 if you are VAT-registered and your
-     prices above are exclusive of VAT. 0 = no tax line shown.               */
+     Oman VAT is 5%. Set percent to 5 if you are VAT-registered and the
+     prices above are exclusive of VAT. 0 = no tax line shown.              */
   tax: {
     percent: 0,
     label: "VAT",
@@ -156,17 +162,6 @@ const PRICING = {
   deposit: {
     percent: 30,         // 0 = don't show a deposit line
     label: "Deposit to secure the date",
-  },
-
-  /* --- Input limits ----------------------------------------------------- */
-  limits: {
-    minGuests: 10,
-    maxGuests: 2000,
-    defaultGuests: 100,
-    minHours: 2,
-    maxHours: 12,
-    defaultHours: 3,
-    defaultDistance: 15,
   },
 };
 

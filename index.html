@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Blended — Cart Hire Cost Calculator</title>
-<meta name="description" content="Instant cost estimate for hiring a Blended ice cream or shakes cart for your event.">
+<meta name="description" content="Instant cost estimate for hiring a Blended ice cream or drinks cart for your event.">
 <meta name="theme-color" content="#1d6828">
 <link rel="icon" href="assets/img/blended-logo.png">
 <link rel="stylesheet" href="assets/css/font.css">
@@ -36,63 +36,48 @@
 
     <h1 class="page-title">What will my cart cost?</h1>
     <p class="page-intro">
-      Tell us about your event and the price updates as you type.
+      Tell us what you would like served and the price updates as you type.
     </p>
 
-    <!-- Cart choice -->
+    <!-- 1. Cart -->
     <fieldset class="field">
       <legend class="label">1. Choose your cart</legend>
       <div class="cart-options" id="cartOptions" role="radiogroup"></div>
     </fieldset>
 
-    <!-- Event details -->
+    <!-- 2. Menu -->
     <fieldset class="field">
-      <legend class="label">2. Your event</legend>
+      <legend class="label">
+        2. Your menu
+        <span class="label-note">how many cups of each</span>
+      </legend>
+      <div id="menu"></div>
+      <p class="cups-total" id="cupsTotal"></p>
+    </fieldset>
 
+    <!-- 3. Event -->
+    <fieldset class="field">
+      <legend class="label">3. Your event</legend>
       <div class="grid-2">
         <div class="input-group">
-          <label for="date"><span>Event date</span></label>
-          <input type="date" id="date" name="date">
-          <p class="hint" id="dateHint">Weekends and peak season cost a little more.</p>
+          <label for="location"><span>Where is it?</span></label>
+          <select id="location" name="location"></select>
+          <p class="hint" id="locationHint"></p>
         </div>
 
         <div class="input-group">
-          <label for="guests"><span>Number of guests</span></label>
-          <input type="number" id="guests" name="guests" inputmode="numeric" min="10" max="2000" step="1" value="100">
-          <p class="hint" id="servingsHint"></p>
-        </div>
-
-        <div class="input-group">
-          <label for="hours"><span>Service hours</span> <span class="value-badge" id="hoursValue">3 h</span></label>
-          <input type="range" id="hours" name="hours" min="2" max="12" step="0.5" value="3">
-          <p class="hint">How long the cart serves your guests.</p>
-        </div>
-
-        <div class="input-group">
-          <label for="staff"><span>Staff on the cart</span> <span class="value-badge" id="staffValue">1</span></label>
-          <input type="range" id="staff" name="staff" min="1" max="8" step="1" value="1">
-          <p class="hint" id="staffHint">More staff means a shorter queue.</p>
-        </div>
-
-        <div class="input-group">
-          <label for="distance"><span>Distance to venue (<span data-travel-unit>km</span>)</span></label>
-          <input type="number" id="distance" name="distance" inputmode="numeric" min="0" max="500" step="1" value="15">
-          <p class="hint" id="travelHint"></p>
-        </div>
-
-        <div class="input-group check-standalone">
-          <label class="checkbox">
-            <input type="checkbox" id="isHoliday" name="isHoliday">
-            <span>My event is on a public holiday</span>
-          </label>
+          <label for="hours"><span>Service hours</span>
+            <span class="value-badge" id="hoursValue">2 h</span></label>
+          <input type="range" id="hours" name="hours" min="2" max="10" step="1" value="2">
+          <p class="hint" id="hoursHint"></p>
         </div>
       </div>
     </fieldset>
 
-    <!-- Add-ons -->
+    <!-- 4. Extras -->
     <fieldset class="field">
-      <legend class="label">3. Add-ons <span class="label-note">optional</span></legend>
-      <div class="addons" id="addons"></div>
+      <legend class="label">4. Extras <span class="label-note">optional</span></legend>
+      <div class="addons" id="extras"></div>
     </fieldset>
 
     <button type="button" class="btn btn-ghost" id="resetBtn">Start over</button>
@@ -133,7 +118,6 @@
     </button>
   </div>
 </div>
-
 
 <footer class="site-footer">
   <p class="wrap">

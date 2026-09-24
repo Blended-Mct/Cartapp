@@ -17,22 +17,19 @@
   });
   const fmt = (n) => money.format(n);
 
+  const GROUP_NAMES = { icecream: "Ice cream", drinks: "Drinks" };
+
   const el = {
     form: $("quoteForm"),
     cartOptions: $("cartOptions"),
-    addons: $("addons"),
-    date: $("date"),
-    guests: $("guests"),
+    menu: $("menu"),
+    cupsTotal: $("cupsTotal"),
+    extras: $("extras"),
+    location: $("location"),
+    locationHint: $("locationHint"),
     hours: $("hours"),
-    staff: $("staff"),
-    distance: $("distance"),
-    isHoliday: $("isHoliday"),
     hoursValue: $("hoursValue"),
-    staffValue: $("staffValue"),
-    servingsHint: $("servingsHint"),
-    staffHint: $("staffHint"),
-    travelHint: $("travelHint"),
-    dateHint: $("dateHint"),
+    hoursHint: $("hoursHint"),
     total: $("quoteTotal"),
     sub: $("quoteSub"),
     warnings: $("quoteWarnings"),
@@ -42,7 +39,10 @@
     mobileBarTotal: $("mobileBarTotal"),
   };
 
-  let selectedPackageId = cfg.packages[0].id;
+  let selectedCartId = cfg.carts[0].id;
+  /* Cup counts are kept here rather than read off the inputs, so switching
+     cart does not lose what the customer already typed. */
+  let quantities = {};
 
   /* --- Static text from the config ------------------------------------ */
   function applyBusinessText() {
@@ -56,119 +56,156 @@
     document.querySelectorAll("[data-business-disclaimer]").forEach((n) => {
       n.textContent = cfg.business.disclaimer;
     });
-    document.querySelectorAll("[data-travel-unit]").forEach((n) => {
-      n.textContent = cfg.travel.unit;
-    });
-  }
-
-  /* --- Apply the limits from the config to the inputs ------------------ */
-  function applyLimits() {
-    const L = cfg.limits;
-    el.guests.min = L.minGuests;
-    el.guests.max = L.maxGuests;
-    el.guests.value = L.defaultGuests;
-    el.hours.min = L.minHours;
-    el.hours.max = L.maxHours;
-    el.hours.value = L.defaultHours;
-    el.distance.max = cfg.travel.maxDistance;
-    el.distance.value = L.defaultDistance;
-    el.staff.max = cfg.staffing.maxStaff;
-    el.isHoliday.closest(".check-standalone").hidden = cfg.surcharges.holidayPercent <= 0;
   }
 
   /* --- Cart chooser ---------------------------------------------------- */
-  function renderPackages() {
+  function renderCarts() {
     el.cartOptions.innerHTML = "";
-    cfg.packages.forEach((pkg, i) => {
+    cfg.carts.forEach((cart, i) => {
       const label = document.createElement("label");
       label.className = "cart-option" + (i === 0 ? " is-selected" : "");
       label.innerHTML = `
-        <input type="radio" name="package" value="${pkg.id}" ${i === 0 ? "checked" : ""}>
-        <span class="cart-option-emoji" aria-hidden="true">${pkg.emoji || "🛒"}</span>
+        <input type="radio" name="cart" value="${cart.id}" ${i === 0 ? "checked" : ""}>
+        <span class="cart-option-emoji" aria-hidden="true">${cart.emoji || "🛒"}</span>
         <strong class="cart-option-name"></strong>
         <span class="cart-option-blurb"></span>
-        <span class="cart-option-from">from ${fmt(pkg.basePrice)}</span>`;
-      label.querySelector(".cart-option-name").textContent = pkg.name;
-      label.querySelector(".cart-option-blurb").textContent = pkg.blurb;
+        <span class="cart-option-from">from ${fmt(cfg.serviceFee)}</span>`;
+      label.querySelector(".cart-option-name").textContent = cart.name;
+      label.querySelector(".cart-option-blurb").textContent = cart.blurb;
       el.cartOptions.appendChild(label);
     });
 
     el.cartOptions.addEventListener("change", (e) => {
-      if (e.target.name !== "package") return;
-      selectedPackageId = e.target.value;
+      if (e.target.name !== "cart") return;
+      selectedCartId = e.target.value;
       el.cartOptions.querySelectorAll(".cart-option").forEach((o) => {
         o.classList.toggle("is-selected", o.querySelector("input").checked);
       });
-      syncStaffMinimum();
-      renderAddons();
+      renderMenu();
+      renderExtras();
       update();
     });
   }
 
-  /* --- Add-ons (only those available for the selected cart) ------------ */
-  function addonPriceLabel(addon) {
-    switch (addon.type) {
-      case "perGuest":   return `${fmt(addon.price)} per guest`;
-      case "perServing": return `${fmt(addon.price)} per serving`;
-      case "perHour":    return `${fmt(addon.price)} per hour`;
-      default:           return fmt(addon.price);
-    }
+  function currentCart() {
+    return cfg.carts.find((c) => c.id === selectedCartId) || cfg.carts[0];
   }
 
-  function renderAddons() {
-    const previously = new Set(selectedAddons());
-    el.addons.innerHTML = "";
+  /* --- The menu, grouped, showing only what this cart serves ----------- */
+  function renderMenu() {
+    const cart = currentCart();
+    el.menu.innerHTML = "";
 
-    const available = cfg.addons.filter(
-      (a) => !a.carts || a.carts.includes(selectedPackageId)
-    );
+    cart.serves.forEach((group) => {
+      const items = cfg.menu.filter((i) => i.group === group);
+      if (!items.length) return;
 
-    if (!available.length) {
-      el.addons.innerHTML = '<p class="hint">No add-ons for this cart.</p>';
-      return;
-    }
+      /* Only label the groups when a cart serves more than one. */
+      if (cart.serves.length > 1) {
+        const heading = document.createElement("p");
+        heading.className = "menu-group";
+        heading.textContent = GROUP_NAMES[group] || group;
+        el.menu.appendChild(heading);
+      }
 
-    available.forEach((addon) => {
-      const checked = previously.has(addon.id);
-      const label = document.createElement("label");
-      label.className = "addon" + (checked ? " is-selected" : "");
-      label.innerHTML = `
-        <input type="checkbox" name="addon" value="${addon.id}" ${checked ? "checked" : ""}>
-        <span>
-          <span class="addon-name"></span>
-          <span class="addon-note"></span>
-          <span class="addon-price">${addonPriceLabel(addon)}</span>
-        </span>`;
-      label.querySelector(".addon-name").textContent = addon.name;
-      label.querySelector(".addon-note").textContent = addon.note || "";
-      el.addons.appendChild(label);
+      items.forEach((item) => {
+        const row = document.createElement("div");
+        row.className = "menu-item";
+        row.innerHTML = `
+          <div class="menu-item-text">
+            <span class="menu-item-name"></span>
+            <span class="menu-item-note"></span>
+            <span class="menu-item-price">${fmt(item.pricePerCup)} per cup</span>
+          </div>
+          <div class="qty">
+            <button type="button" class="qty-btn" data-step="-10"
+                    aria-label="Fewer cups of ${item.name}">−</button>
+            <input type="number" class="qty-input" inputmode="numeric"
+                   min="0" max="5000" step="1" value="${quantities[item.id] || 0}"
+                   data-item="${item.id}" aria-label="Cups of ${item.name}">
+            <button type="button" class="qty-btn" data-step="10"
+                    aria-label="More cups of ${item.name}">+</button>
+          </div>`;
+        row.querySelector(".menu-item-name").textContent = item.name;
+        row.querySelector(".menu-item-note").textContent = item.note || "";
+        el.menu.appendChild(row);
+      });
+    });
+
+    /* The +/− buttons move in tens, which is how people order cups. */
+    el.menu.querySelectorAll(".qty-btn").forEach((button) => {
+      button.addEventListener("click", () => {
+        const input = button.parentElement.querySelector(".qty-input");
+        const step = Number(button.dataset.step);
+        const next = Math.max(0, (Number(input.value) || 0) + step);
+        input.value = next;
+        quantities[input.dataset.item] = next;
+        update();
+      });
     });
   }
 
-  function selectedAddons() {
-    return Array.from(
-      el.addons.querySelectorAll('input[name="addon"]:checked')
-    ).map((i) => i.value);
+  /* --- Extras, filtered to the ones this cart can offer ---------------- */
+  function renderExtras() {
+    const cart = currentCart();
+    const previously = new Set(selectedExtras());
+    el.extras.innerHTML = "";
+
+    const cupExtras = cfg.cupExtras.filter(
+      (e) => e.appliesTo === "all" || cart.serves.includes(e.appliesTo)
+    );
+
+    cupExtras
+      .map((e) => ({ ...e, priceLabel: `${fmt(e.pricePerCup)} per cup`, kind: "cup" }))
+      .concat(
+        cfg.flatExtras.map((e) => ({ ...e, priceLabel: fmt(e.price), kind: "flat" }))
+      )
+      .forEach((extra) => {
+        const checked = previously.has(extra.id);
+        const label = document.createElement("label");
+        label.className = "addon" + (checked ? " is-selected" : "");
+        label.innerHTML = `
+          <input type="checkbox" name="extra" value="${extra.id}"
+                 data-kind="${extra.kind}" ${checked ? "checked" : ""}>
+          <span>
+            <span class="addon-name"></span>
+            <span class="addon-note"></span>
+            <span class="addon-price">${extra.priceLabel}</span>
+          </span>`;
+        label.querySelector(".addon-name").textContent = extra.name;
+        label.querySelector(".addon-note").textContent = extra.note || "";
+        el.extras.appendChild(label);
+      });
   }
 
-  /* --- A cart's included staff is the floor for the staff slider ------- */
-  function syncStaffMinimum() {
-    const pkg = cfg.packages.find((p) => p.id === selectedPackageId);
-    el.staff.min = pkg.includedStaff;
-    if (Number(el.staff.value) < pkg.includedStaff) el.staff.value = pkg.includedStaff;
+  function selectedExtras(kind) {
+    const selector = kind
+      ? `input[name="extra"][data-kind="${kind}"]:checked`
+      : 'input[name="extra"]:checked';
+    return Array.from(el.extras.querySelectorAll(selector)).map((i) => i.value);
+  }
+
+  /* --- Locations -------------------------------------------------------- */
+  function renderLocations() {
+    el.location.innerHTML = "";
+    cfg.locations.forEach((loc) => {
+      const option = document.createElement("option");
+      option.value = loc.id;
+      option.textContent =
+        loc.charge > 0 ? `${loc.name} (+${fmt(loc.charge)})` : loc.name;
+      el.location.appendChild(option);
+    });
   }
 
   /* --- Reading the form ------------------------------------------------ */
   function readInput() {
     return {
-      packageId: selectedPackageId,
-      guests: Number(el.guests.value),
+      cartId: selectedCartId,
+      quantities,
+      locationId: el.location.value,
       hours: Number(el.hours.value),
-      staff: Number(el.staff.value),
-      distance: Number(el.distance.value),
-      date: el.date.value,
-      isHoliday: el.isHoliday.checked,
-      addons: selectedAddons(),
+      cupExtras: selectedExtras("cup"),
+      flatExtras: selectedExtras("flat"),
     };
   }
 
@@ -192,36 +229,29 @@
   }
 
   function renderQuote(q) {
-    el.total.textContent = fmt(q.total);
-    el.mobileBarTotal.textContent = fmt(q.total);
-    el.sub.textContent =
-      `${q.package.name} · ${q.guests} guests · ${q.hours} h · ` +
-      `about ${fmt(q.perGuest)} per guest`;
+    const showPrice = q.totalCups > 0;
+    el.total.textContent = showPrice ? fmt(q.total) : "—";
+    el.mobileBarTotal.textContent = showPrice ? fmt(q.total) : "—";
+    el.sub.textContent = showPrice
+      ? `${q.cart.name} · ${q.totalCups} cups · ${q.hours} h · ` +
+        `about ${fmt(q.perCup)} per cup`
+      : "Choose your cups to see a price.";
 
-    /* Line items */
     el.body.innerHTML = "";
-    q.lines.forEach((l) => el.body.appendChild(row(l.label, l.detail, fmt(l.amount))));
-
-    /* Totals block */
     el.foot.innerHTML = "";
-    if (q.discount || q.tax || q.minimumTopUp) {
-      el.foot.appendChild(row("Subtotal", "", fmt(q.subtotal)));
-    }
-    if (q.discount) {
-      el.foot.appendChild(row(q.discount.label, "", `−${fmt(q.discount.amount)}`, "row-discount"));
-    }
-    if (q.minimumTopUp) {
-      el.foot.appendChild(row(q.minimumTopUp.label, q.minimumTopUp.detail, fmt(q.minimumTopUp.amount)));
-    }
-    if (q.tax) {
-      el.foot.appendChild(row(q.tax.label, "", fmt(q.tax.amount)));
-    }
-    el.foot.appendChild(row("Total estimate", "", fmt(q.total), "row-total"));
-    if (q.deposit) {
-      el.foot.appendChild(row(q.deposit.label, "", fmt(q.deposit.amount), "row-deposit"));
+
+    if (showPrice) {
+      q.lines.forEach((l) => el.body.appendChild(row(l.label, l.detail, fmt(l.amount))));
+      if (q.tax) {
+        el.foot.appendChild(row("Subtotal", "", fmt(q.subtotal)));
+        el.foot.appendChild(row(q.tax.label, "", fmt(q.tax.amount)));
+      }
+      el.foot.appendChild(row("Total estimate", "", fmt(q.total), "row-total"));
+      if (q.deposit) {
+        el.foot.appendChild(row(q.deposit.label, "", fmt(q.deposit.amount), "row-deposit"));
+      }
     }
 
-    /* Warnings */
     el.warnings.innerHTML = "";
     q.warnings.forEach((text) => {
       const p = document.createElement("p");
@@ -234,49 +264,41 @@
   /* --- Hints under the inputs ------------------------------------------ */
   function renderHints(q) {
     el.hoursValue.textContent = `${q.hours} h`;
-    el.staffValue.textContent = q.staff;
+    const included = cfg.duration.includedHours;
+    const extra = q.hours - included;
+    el.hoursHint.textContent =
+      extra > 0
+        ? `${extra} ${extra === 1 ? "hour" : "hours"} beyond the ${included} ` +
+          `included, at ${fmt(cfg.duration.extraHourRate)} each.`
+        : `${included} hours are included in the service fee.`;
 
-    el.servingsHint.textContent =
-      `We plan for about ${q.servings} servings (${q.package.servingsPerGuest} per guest).`;
+    el.locationHint.textContent =
+      q.location.charge > 0
+        ? `${q.location.name} carries a ${fmt(q.location.charge)} travel charge.`
+        : `No travel charge within ${q.location.name}.`;
 
-    const short = q.recommendedStaff > q.staff;
-    el.staffHint.textContent = short
-      ? `We'd suggest ${q.recommendedStaff} staff for this many servings.`
-      : "Enough staff to keep the queue short.";
-    el.staffHint.classList.toggle("is-alert", short);
-
-    const t = cfg.travel;
-    el.travelHint.textContent =
-      q.distance <= t.freeRadius
-        ? `Within our free ${t.freeRadius} ${t.unit} radius — no travel charge.`
-        : `${Math.round(q.distance - t.freeRadius)} ${t.unit} beyond the free radius is charged.`;
-    el.travelHint.classList.toggle("is-alert", q.distance > t.freeRadius);
-
-    el.dateHint.textContent = el.date.value
-      ? describeDate(el.date.value)
-      : "Weekends and peak season cost a little more.";
+    const short = cfg.minimumCups - q.totalCups;
+    el.cupsTotal.textContent =
+      q.totalCups === 0
+        ? `Minimum order ${cfg.minimumCups} cups.`
+        : q.meetsMinimum
+        ? `${q.totalCups} cups in total.`
+        : `${q.totalCups} cups — ${short} short of our ${cfg.minimumCups} cup minimum.`;
+    el.cupsTotal.classList.toggle("is-alert", q.totalCups > 0 && !q.meetsMinimum);
   }
 
-  function describeDate(value) {
-    const [y, m, d] = value.split("-").map(Number);
-    const date = new Date(y, m - 1, d);
-    if (Number.isNaN(date.getTime())) return "";
-    const weekday = date.toLocaleDateString(cfg.locale, { weekday: "long" });
-    const notes = [];
-    const s = cfg.surcharges;
-    const weekendDays = s.weekendDays || [0, 6];
-    if (s.weekendPercent > 0 && weekendDays.includes(date.getDay())) {
-      notes.push(`weekend rate +${s.weekendPercent}%`);
-    }
-    if (s.peakMonthPercent > 0 && (s.peakMonths || []).includes(m)) {
-      notes.push(`${(s.peakMonthLabel || "peak season").toLowerCase()} +${s.peakMonthPercent}%`);
-    }
-    return notes.length ? `${weekday} — ${notes.join(", ")}.` : `${weekday} — standard rate.`;
+  /* Highlight the rows the customer has actually ordered. */
+  function markChosenItems() {
+    el.menu.querySelectorAll(".qty-input").forEach((input) => {
+      const ordered = (quantities[input.dataset.item] || 0) > 0;
+      input.closest(".menu-item").classList.toggle("is-chosen", ordered);
+    });
   }
 
   /* --- The one function that runs on every change ---------------------- */
   function update() {
     const q = calculateQuote(readInput(), cfg);
+    markChosenItems();
     renderHints(q);
     renderQuote(q);
   }
@@ -329,14 +351,22 @@
   /* --- Wire everything up ---------------------------------------------- */
   function init() {
     applyBusinessText();
-    applyLimits();
-    renderPackages();
-    syncStaffMinimum();
-    renderAddons();
+    el.hours.min = cfg.duration.includedHours;
+    el.hours.max = cfg.duration.maxHours;
+    el.hours.value = cfg.duration.includedHours;
+
+    renderCarts();
+    renderLocations();
+    renderMenu();
+    renderExtras();
     initTheme();
 
     el.form.addEventListener("input", (e) => {
-      if (e.target.name === "addon") {
+      if (e.target.classList.contains("qty-input")) {
+        const value = Math.max(0, Math.round(Number(e.target.value) || 0));
+        quantities[e.target.dataset.item] = value;
+      }
+      if (e.target.name === "extra") {
         e.target.closest(".addon").classList.toggle("is-selected", e.target.checked);
       }
       update();
@@ -346,14 +376,15 @@
 
     $("resetBtn").addEventListener("click", () => {
       el.form.reset();
-      selectedPackageId = cfg.packages[0].id;
-      applyLimits();
+      selectedCartId = cfg.carts[0].id;
+      quantities = {};
       el.cartOptions.querySelectorAll(".cart-option").forEach((o, i) => {
         o.querySelector("input").checked = i === 0;
         o.classList.toggle("is-selected", i === 0);
       });
-      syncStaffMinimum();
-      renderAddons();
+      el.hours.value = cfg.duration.includedHours;
+      renderMenu();
+      renderExtras();
       update();
     });
 

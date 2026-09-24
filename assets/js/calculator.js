@@ -1,5 +1,8 @@
 /* =============================================================================
    CALCULATOR  —  pure pricing logic, no DOM. Edit prices in pricing-config.js.
+
+   The price is built from cups: the customer says how many of each menu item
+   they want, and everything else follows from that.
    ========================================================================== */
 
 /* Rounds to a number of decimal places. Rials use 3 (baisa), most
@@ -9,226 +12,161 @@ function roundTo(n, decimals) {
   return Math.round((n + Number.EPSILON) * f) / f;
 }
 
-/* Kept for callers that just want two decimals. */
-function round2(n) {
-  return roundTo(n, 2);
-}
-
 function clamp(n, min, max) {
   if (!Number.isFinite(n)) return min;
   return Math.min(max, Math.max(min, n));
 }
 
-/* Number of drinks/scoops we expect to serve. */
-function estimateServings(guests, pkg) {
-  return Math.ceil(guests * pkg.servingsPerGuest);
+/* The menu items a given cart can serve. */
+function menuForCart(cart, config) {
+  return config.menu.filter((item) => cart.serves.includes(item.group));
 }
 
-/* Staff needed to serve that many servings within the booked hours. */
-function recommendedStaff(servings, hours, config) {
-  const perStaff = config.staffing.servingsPerStaffPerHour * hours;
-  if (perStaff <= 0) return 1;
-  return Math.max(1, Math.ceil(servings / perStaff));
+/* The per-cup extras that make sense for a given cart. */
+function cupExtrasForCart(cart, config) {
+  return config.cupExtras.filter(
+    (extra) => extra.appliesTo === "all" || cart.serves.includes(extra.appliesTo)
+  );
 }
 
-/* An add-on's cost for this booking. */
-function addonAmount(addon, ctx) {
-  switch (addon.type) {
-    case "perGuest":   return addon.price * ctx.guests;
-    case "perServing": return addon.price * ctx.servings;
-    case "perHour":    return addon.price * ctx.hours;
-    case "flat":
-    default:           return addon.price;
-  }
-}
-
-function addonAppliesTo(addon, packageId) {
-  return !addon.carts || addon.carts.includes(packageId);
-}
-
-/* Which surcharges apply to the chosen date. */
-function activeSurcharges(dateStr, isHoliday, config) {
-  const s = config.surcharges;
-  // Oman's weekend is Friday & Saturday; set `weekendDays` in the config.
-  const weekendDays = s.weekendDays || [0, 6];
-  const out = [];
-  if (dateStr) {
-    // Parse as a local date so the weekday matches what the customer picked.
-    const [y, m, d] = dateStr.split("-").map(Number);
-    const date = new Date(y, m - 1, d);
-    if (!Number.isNaN(date.getTime())) {
-      const day = date.getDay();
-      if (s.weekendPercent > 0 && weekendDays.includes(day)) {
-        out.push({ label: "Weekend surcharge", percent: s.weekendPercent });
-      }
-      if (s.peakMonthPercent > 0 && (s.peakMonths || []).includes(m)) {
-        out.push({ label: s.peakMonthLabel || "Peak season", percent: s.peakMonthPercent });
-      }
-    }
-  }
-  if (isHoliday && s.holidayPercent > 0) {
-    out.push({ label: "Public holiday surcharge", percent: s.holidayPercent });
-  }
-  return out;
+/* How many cups an extra is counted on: ice cream cups, drinks cups, or all.
+   Only items the cart actually serves are counted, so cups typed against one
+   cart never follow the customer to another. */
+function cupsForScope(scope, quantities, config, cart) {
+  return config.menu.reduce((sum, item) => {
+    if (cart && !cart.serves.includes(item.group)) return sum;
+    if (scope !== "all" && item.group !== scope) return sum;
+    return sum + (quantities[item.id] || 0);
+  }, 0);
 }
 
 /* -----------------------------------------------------------------------------
    calculateQuote(input, config)
 
    input = {
-     packageId, guests, hours, staff, distance,
-     date: "YYYY-MM-DD" | "", isHoliday: bool, addons: [ids]
+     cartId,
+     quantities: { gelato: 120, matcha: 40, … },   cups per menu item
+     locationId,
+     hours,
+     cupExtras: [ids],
+     flatExtras: [ids],
    }
 
-   Returns a full breakdown: every line the customer sees, plus warnings.
+   Returns every line the customer sees, plus warnings.
 --------------------------------------------------------------------------- */
 function calculateQuote(input, config) {
-  const pkg =
-    config.packages.find((p) => p.id === input.packageId) || config.packages[0];
-  const L = config.limits;
+  const cart = config.carts.find((c) => c.id === input.cartId) || config.carts[0];
   const round = (n) => roundTo(n, config.decimals);
 
-  const guests = clamp(Math.round(input.guests), L.minGuests, L.maxGuests);
-  const hours = clamp(input.hours, L.minHours, L.maxHours);
-  const distance = clamp(input.distance, 0, config.travel.maxDistance);
-  const servings = estimateServings(guests, pkg);
-  const staff = clamp(
-    Math.round(input.staff),
-    pkg.includedStaff,
-    config.staffing.maxStaff
-  );
+  /* Keep only the items this cart serves, cleaned up to whole cups. The form
+     remembers what was typed against other carts, but none of it is charged. */
+  const quantities = {};
+  menuForCart(cart, config).forEach((item) => {
+    const ordered = Math.round(Number((input.quantities || {})[item.id]) || 0);
+    if (ordered > 0) quantities[item.id] = ordered;
+  });
 
-  const ctx = { guests, hours, servings };
   const lines = [];
   const warnings = [];
 
-  /* 1. Base package ---------------------------------------------------- */
+  /* 1. The service fee every booking starts with ------------------------ */
   lines.push({
-    label: `${pkg.name} — base package`,
-    detail: `Includes ${pkg.includedHours} h service, ${pkg.includedServings} servings, ${pkg.includedStaff} staff`,
-    amount: pkg.basePrice,
-    surchargeable: true,
+    label: config.serviceFeeLabel || "Cart service fee",
+    detail: `${cart.name}, ${config.duration.includedHours} hours of service`,
+    amount: config.serviceFee,
   });
 
-  /* 2. Extra service hours ---------------------------------------------- */
-  const extraHours = roundTo(Math.max(0, hours - pkg.includedHours), 2);
+  /* 2. The menu — only what this cart serves, and only what was ordered -- */
+  const items = menuForCart(cart, config);
+  let totalCups = 0;
+
+  items.forEach((item) => {
+    const ordered = quantities[item.id] || 0;
+    if (ordered <= 0) return;
+
+    totalCups += ordered;
+
+    /* An item with a minimum is billed at that minimum. */
+    const billed = item.minCups ? Math.max(ordered, item.minCups) : ordered;
+    const detail =
+      billed > ordered
+        ? `${ordered} cups ordered, ${billed} cup minimum × ${item.pricePerCup}`
+        : `${billed} cups × ${item.pricePerCup}`;
+
+    lines.push({ label: item.name, detail, amount: billed * item.pricePerCup });
+
+    if (billed > ordered) {
+      warnings.push(
+        `${item.name} is served from ${item.minCups} cups up, so ${item.minCups} ` +
+        `cups are charged.`
+      );
+    }
+  });
+
+  /* 3. Extras charged per cup -------------------------------------------- */
+  const chosenCupExtras = (input.cupExtras || [])
+    .map((id) => config.cupExtras.find((e) => e.id === id))
+    .filter((e) => e && (e.appliesTo === "all" || cart.serves.includes(e.appliesTo)));
+
+  chosenCupExtras.forEach((extra) => {
+    const scopeCups = cupsForScope(extra.appliesTo, quantities, config, cart);
+    if (scopeCups <= 0) return;
+
+    const billed = extra.minCups ? Math.max(scopeCups, extra.minCups) : scopeCups;
+    const detail =
+      billed > scopeCups
+        ? `${scopeCups} cups, ${billed} cup minimum × ${extra.pricePerCup}`
+        : `${billed} cups × ${extra.pricePerCup}`;
+
+    lines.push({ label: extra.name, detail, amount: billed * extra.pricePerCup });
+  });
+
+  /* 4. Extras charged once ------------------------------------------------ */
+  (input.flatExtras || [])
+    .map((id) => config.flatExtras.find((e) => e.id === id))
+    .filter(Boolean)
+    .forEach((extra) => {
+      lines.push({ label: extra.name, detail: extra.note || "", amount: extra.price });
+    });
+
+  /* 5. Location ----------------------------------------------------------- */
+  const location =
+    config.locations.find((l) => l.id === input.locationId) || config.locations[0];
+  if (location.charge > 0) {
+    lines.push({
+      label: `Travel to ${location.name}`,
+      detail: "Outside Muscat",
+      amount: location.charge,
+    });
+  }
+
+  /* 6. Hours beyond what the service fee covers --------------------------- */
+  const hours = clamp(
+    Math.round(input.hours),
+    config.duration.includedHours,
+    config.duration.maxHours
+  );
+  const extraHours = Math.max(0, hours - config.duration.includedHours);
   if (extraHours > 0) {
     lines.push({
-      label: "Additional service hours",
-      detail: `${extraHours} h × ${pkg.extraHourRate}`,
-      amount: extraHours * pkg.extraHourRate,
-      surchargeable: true,
+      label: "Additional hours",
+      detail: `${extraHours} h × ${config.duration.extraHourRate}`,
+      amount: extraHours * config.duration.extraHourRate,
     });
   }
 
-  /* 3. Servings above what the package includes -------------------------- */
-  const extraServings = Math.max(0, servings - pkg.includedServings);
-  if (extraServings > 0) {
-    lines.push({
-      label: "Additional servings",
-      detail: `${extraServings} × ${pkg.perExtraServing} (est. ${servings} servings for ${guests} guests)`,
-      amount: extraServings * pkg.perExtraServing,
-      surchargeable: true,
-    });
-  }
-
-  /* 4. Extra staff ------------------------------------------------------- */
-  const extraStaff = Math.max(0, staff - pkg.includedStaff);
-  if (extraStaff > 0) {
-    lines.push({
-      label: "Additional staff",
-      detail: `${extraStaff} × ${hours} h × ${config.staffing.extraStaffPerHour}`,
-      amount: extraStaff * hours * config.staffing.extraStaffPerHour,
-      surchargeable: true,
-    });
-  }
-
-  /* 5. Add-ons ----------------------------------------------------------- */
-  const chosenAddons = (input.addons || [])
-    .map((id) => config.addons.find((a) => a.id === id))
-    .filter((a) => a && addonAppliesTo(a, pkg.id));
-
-  chosenAddons.forEach((addon) => {
-    const amount = addonAmount(addon, ctx);
-    const detail =
-      addon.type === "perServing" ? `${servings} servings × ${addon.price}`
-      : addon.type === "perGuest"  ? `${guests} guests × ${addon.price}`
-      : addon.type === "perHour"   ? `${hours} h × ${addon.price}`
-      : addon.note || "";
-    lines.push({ label: addon.name, detail, amount, surchargeable: true });
-  });
-
-  /* 6. Date surcharges — applied to the service cost only ---------------- */
-  const serviceSubtotal = lines
-    .filter((l) => l.surchargeable)
-    .reduce((sum, l) => sum + l.amount, 0);
-
-  activeSurcharges(input.date, input.isHoliday, config).forEach((s) => {
-    lines.push({
-      label: s.label,
-      detail: `${s.percent}% of service cost`,
-      amount: serviceSubtotal * (s.percent / 100),
-      surchargeable: false,
-    });
-  });
-
-  /* 7. Set-up fee -------------------------------------------------------- */
-  if (config.fees.setupFee > 0) {
-    lines.push({
-      label: config.fees.setupFeeLabel || "Set-up & pack-down",
-      detail: "Equipment transport, set-up and clear-down",
-      amount: config.fees.setupFee,
-      surchargeable: false,
-    });
-  }
-
-  /* 8. Travel ------------------------------------------------------------ */
-  const t = config.travel;
-  const billableDistance = Math.max(0, distance - t.freeRadius);
-  if (billableDistance > 0) {
-    const multiplier = t.chargeRoundTrip ? 2 : 1;
-    lines.push({
-      label: "Travel",
-      detail:
-        `${roundTo(billableDistance, 2)} ${t.unit} beyond the free ${t.freeRadius} ${t.unit} radius` +
-        (t.chargeRoundTrip ? ` × 2 (round trip) × ${t.perUnit}` : ` × ${t.perUnit}`),
-      amount: billableDistance * multiplier * t.perUnit,
-      surchargeable: false,
-    });
-  }
-
-  /* 9. Subtotal, discount, minimum spend, tax ---------------------------- */
-  let subtotal = round(lines.reduce((sum, l) => sum + l.amount, 0));
-
-  const discountTier = (config.discounts || [])
-    .filter((d) => subtotal >= d.minSubtotal)
-    .sort((a, b) => b.percent - a.percent)[0];
-
-  const discount = discountTier
-    ? { label: discountTier.label, amount: round(subtotal * (discountTier.percent / 100)) }
-    : null;
-
-  let afterDiscount = round(subtotal - (discount ? discount.amount : 0));
-
-  let minimumTopUp = null;
-  if (config.fees.minimumSpend > 0 && afterDiscount < config.fees.minimumSpend) {
-    minimumTopUp = {
-      label: "Minimum booking adjustment",
-      detail: `Our minimum booking is ${config.fees.minimumSpend}`,
-      amount: round(config.fees.minimumSpend - afterDiscount),
-    };
-    afterDiscount = config.fees.minimumSpend;
-  }
+  /* 7. Totals -------------------------------------------------------------- */
+  const subtotal = round(lines.reduce((sum, l) => sum + l.amount, 0));
 
   const tax =
     config.tax.percent > 0
       ? {
           label: `${config.tax.label} (${config.tax.percent}%)`,
-          amount: round(afterDiscount * (config.tax.percent / 100)),
+          amount: round(subtotal * (config.tax.percent / 100)),
         }
       : null;
 
-  const total = round(afterDiscount + (tax ? tax.amount : 0));
+  const total = round(subtotal + (tax ? tax.amount : 0));
 
   const deposit =
     config.deposit.percent > 0
@@ -238,43 +176,35 @@ function calculateQuote(input, config) {
         }
       : null;
 
-  /* 10. Warnings — things the customer should know before booking -------- */
-  const needed = recommendedStaff(servings, hours, config);
-  if (needed > staff) {
+  /* 8. Is this a bookable order? ------------------------------------------ */
+  const meetsMinimum = totalCups >= config.minimumCups;
+  if (totalCups === 0) {
+    warnings.push("Choose how many cups you would like to see a price.");
+  } else if (!meetsMinimum) {
     warnings.push(
-      `About ${servings} servings in ${hours} h is a lot for ${staff} staff. ` +
-      `We'd suggest ${needed} to keep the queue short.`
-    );
-  }
-  if (distance > t.freeRadius && billableDistance > 0) {
-    warnings.push(
-      `Your venue is outside our free ${t.freeRadius} ${t.unit} radius, so travel is included above.`
-    );
-  }
-  if (minimumTopUp) {
-    warnings.push(
-      `This booking is below our minimum of ${config.fees.minimumSpend}, so it has been topped up to the minimum.`
+      `Our smallest booking is ${config.minimumCups} cups — ` +
+      `${config.minimumCups - totalCups} more to go.`
     );
   }
 
   return {
-    package: pkg,
-    guests, hours, staff, distance, servings,
-    recommendedStaff: needed,
+    cart,
+    location,
+    hours,
+    totalCups,
+    meetsMinimum,
     lines: lines.map((l) => ({ ...l, amount: round(l.amount) })),
     subtotal,
-    discount,
-    minimumTopUp,
     tax,
     total,
     deposit,
-    perGuest: guests > 0 ? round(total / guests) : 0,
+    perCup: totalCups > 0 ? round(total / totalCups) : 0,
     warnings,
   };
 }
 
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
-    calculateQuote, estimateServings, recommendedStaff, roundTo, round2, clamp,
+    calculateQuote, menuForCart, cupExtrasForCart, cupsForScope, roundTo, clamp,
   };
 }

@@ -6,41 +6,55 @@
 
 const assert = require("node:assert/strict");
 const { test } = require("node:test");
-const { calculateQuote, estimateServings, recommendedStaff } =
+const { calculateQuote, cupsForScope, roundTo } =
   require("../assets/js/calculator.js");
 
 /* A small, predictable price list — easy to check the arithmetic by hand. */
 const cfg = {
-  currency: "USD",
-  locale: "en-US",
-  packages: [
-    {
-      id: "coffee", name: "Coffee Cart", emoji: "", blurb: "",
-      basePrice: 1000, includedHours: 3, includedServings: 100, includedStaff: 1,
-      extraHourRate: 100, perExtraServing: 5, servingsPerGuest: 1.5,
-    },
+  currency: "OMR",
+  locale: "en-OM",
+  decimals: 3,
+  serviceFee: 30,
+  serviceFeeLabel: "Cart service fee",
+  minimumCups: 50,
+  duration: { includedHours: 2, extraHourRate: 5, maxHours: 10 },
+  locations: [
+    { id: "muscat", name: "Muscat", charge: 0 },
+    { id: "barka", name: "Barka", charge: 15 },
   ],
-  staffing: { extraStaffPerHour: 50, servingsPerStaffPerHour: 60, maxStaff: 8 },
-  travel: { unit: "km", freeRadius: 20, perUnit: 2, chargeRoundTrip: true, maxDistance: 500 },
-  fees: { setupFee: 100, setupFeeLabel: "Set-up", minimumSpend: 0 },
-  surcharges: { weekendPercent: 10, holidayPercent: 25, peakMonths: [12], peakMonthPercent: 10, peakMonthLabel: "Peak season" },
-  addons: [
-    { id: "flat", name: "Flat add-on", type: "flat", price: 200 },
-    { id: "perServing", name: "Per serving add-on", type: "perServing", price: 1 },
-    { id: "perHour", name: "Per hour add-on", type: "perHour", price: 10 },
-    { id: "coffeeOnly", name: "Coffee only", type: "flat", price: 50, carts: ["coffee"] },
-    { id: "otherCart", name: "Other cart only", type: "flat", price: 999, carts: ["icecream"] },
+  carts: [
+    { id: "icecream", name: "Ice Cream Cart", blurb: "", emoji: "", serves: ["icecream"] },
+    { id: "drinks", name: "Drinks Cart", blurb: "", emoji: "", serves: ["drinks"] },
+    { id: "blend", name: "The Blend", blurb: "", emoji: "", serves: ["icecream", "drinks"] },
   ],
-  discounts: [],
+  menu: [
+    { id: "gelato", group: "icecream", name: "Gelato", pricePerCup: 1 },
+    { id: "softserve", group: "icecream", name: "Soft serve", pricePerCup: 1.5, minCups: 200 },
+    { id: "espresso", group: "drinks", name: "Espresso", pricePerCup: 1.5 },
+    { id: "matcha", group: "drinks", name: "Matcha", pricePerCup: 2 },
+    { id: "creamy", group: "drinks", name: "Creamy matcha", pricePerCup: 1.5, minCups: 50 },
+  ],
+  cupExtras: [
+    { id: "toppings", name: "Extra toppings", pricePerCup: 0.2, minCups: 50, appliesTo: "icecream" },
+    { id: "cookies", name: "Cookies", pricePerCup: 0.9, appliesTo: "icecream" },
+    { id: "branded_cups", name: "Branded cups", pricePerCup: 0.25, minCups: 50, appliesTo: "all" },
+  ],
+  flatExtras: [
+    { id: "female_server", name: "Female server", price: 15 },
+    { id: "branded_cart", name: "Branded cart", price: 40 },
+  ],
   tax: { percent: 0, label: "VAT" },
   deposit: { percent: 0, label: "Deposit" },
-  limits: { minGuests: 10, maxGuests: 2000, defaultGuests: 100, minHours: 2, maxHours: 12, defaultHours: 3, defaultDistance: 10 },
 };
 
-/* Baseline booking: everything included, nothing extra. Tuesday. */
+/* Baseline: ice cream cart, 100 cups of gelato, in Muscat, 2 hours. */
 const base = {
-  packageId: "coffee", guests: 10, hours: 3, staff: 1, distance: 10,
-  date: "2026-06-02", isHoliday: false, addons: [],
+  cartId: "icecream",
+  quantities: { gelato: 100 },
+  locationId: "muscat",
+  hours: 2,
+  cupExtras: [],
+  flatExtras: [],
 };
 
 const q = (over = {}) => calculateQuote({ ...base, ...over }, cfg);
@@ -49,183 +63,206 @@ const lineAmount = (quote, label) => {
   return line ? line.amount : null;
 };
 
-test("a booking inside the package costs the base price plus the set-up fee", () => {
+/* --- The basics ------------------------------------------------------- */
+
+test("every booking starts with the service fee", () => {
+  assert.equal(lineAmount(q(), "Cart service fee"), 30);
+  assert.equal(lineAmount(q({ quantities: {} }), "Cart service fee"), 30);
+});
+
+test("cups are charged at the item's per-cup price", () => {
   const r = q();
-  assert.equal(r.subtotal, 1100);
-  assert.equal(r.total, 1100);
-  assert.equal(lineAmount(r, "Additional"), null);
+  assert.equal(lineAmount(r, "Gelato"), 100);
+  assert.equal(r.total, 130); // 30 service fee + 100 cups x 1
+  assert.equal(r.totalCups, 100);
 });
 
-test("servings are estimated from guests, not taken literally", () => {
-  assert.equal(estimateServings(100, cfg.packages[0]), 150);
-  assert.equal(estimateServings(33, cfg.packages[0]), 50); // rounds up
+test("two hours are included and further hours are charged", () => {
+  assert.equal(lineAmount(q(), "Additional hours"), null);
+  assert.equal(lineAmount(q({ hours: 5 }), "Additional hours"), 15); // 3 x 5
 });
 
-test("servings above the included allowance are charged", () => {
-  const r = q({ guests: 100 }); // 150 servings, 100 included -> 50 x 5
-  assert.equal(lineAmount(r, "Additional servings"), 250);
+test("hours below the included minimum are raised, never credited", () => {
+  const r = q({ hours: 0 });
+  assert.equal(r.hours, 2);
+  assert.equal(lineAmount(r, "Additional hours"), null);
 });
 
-test("hours above the included allowance are charged, half hours included", () => {
-  assert.equal(lineAmount(q({ hours: 5 }), "Additional service hours"), 200);
-  assert.equal(lineAmount(q({ hours: 4.5 }), "Additional service hours"), 150);
+test("Muscat is free and Barka carries a flat charge", () => {
+  assert.equal(lineAmount(q(), "Travel"), null);
+  assert.equal(lineAmount(q({ locationId: "barka" }), "Travel to Barka"), 15);
 });
 
-test("extra staff are charged per person per hour", () => {
-  const r = q({ staff: 3, hours: 4 }); // 2 extra x 4 h x 50
-  assert.equal(lineAmount(r, "Additional staff"), 400);
+test("an unknown location falls back to the first one", () => {
+  assert.equal(q({ locationId: "nowhere" }).location.id, "muscat");
 });
 
-test("staff below the package minimum is raised, never charged as a credit", () => {
-  const r = q({ staff: 0 });
-  assert.equal(r.staff, 1);
-  assert.equal(lineAmount(r, "Additional staff"), null);
+/* --- Menu minimums ----------------------------------------------------- */
+
+test("soft serve below its 200 cup minimum is billed at the minimum", () => {
+  const r = q({ quantities: { softserve: 120 } });
+  assert.equal(lineAmount(r, "Soft serve"), 300); // 200 x 1.5, not 120 x 1.5
+  assert.equal(r.totalCups, 120);                 // the order is still 120 cups
+  assert.ok(r.warnings.some((w) => w.includes("200")));
 });
 
-test("add-ons are priced by their type", () => {
-  assert.equal(lineAmount(q({ addons: ["flat"] }), "Flat add-on"), 200);
-  assert.equal(lineAmount(q({ guests: 100, addons: ["perServing"] }), "Per serving"), 150);
-  assert.equal(lineAmount(q({ hours: 5, addons: ["perHour"] }), "Per hour"), 50);
+test("soft serve above its minimum is billed as ordered", () => {
+  const r = q({ quantities: { softserve: 260 } });
+  assert.equal(lineAmount(r, "Soft serve"), 390);
+  assert.equal(r.warnings.some((w) => w.includes("200")), false);
 });
 
-test("add-ons that belong to another cart are ignored", () => {
-  const r = q({ addons: ["coffeeOnly", "otherCart"] });
-  assert.equal(lineAmount(r, "Coffee only"), 50);
-  assert.equal(lineAmount(r, "Other cart only"), null);
+test("a drinks item with a 50 cup minimum behaves the same way", () => {
+  const r = q({ cartId: "drinks", quantities: { creamy: 20 } });
+  assert.equal(lineAmount(r, "Creamy matcha"), 75); // 50 x 1.5
 });
 
-test("travel is only charged beyond the free radius, both ways", () => {
-  assert.equal(lineAmount(q({ distance: 20 }), "Travel"), null);
-  assert.equal(lineAmount(q({ distance: 50 }), "Travel"), 120); // 30 x 2 x 2
+/* --- Which cart serves what ------------------------------------------- */
+
+test("a cart only charges for items it serves", () => {
+  const r = q({ cartId: "drinks", quantities: { gelato: 100, matcha: 60 } });
+  assert.equal(lineAmount(r, "Gelato"), null);
+  assert.equal(lineAmount(r, "Matcha"), 120);
+  assert.equal(r.totalCups, 60);
 });
 
-test("a weekend date adds a surcharge on the service cost, not on travel", () => {
-  const r = q({ date: "2026-06-06", distance: 50 }); // Saturday
-  assert.equal(lineAmount(r, "Weekend surcharge"), 100); // 10% of 1000, travel excluded
+test("the blend cart serves ice cream and drinks together", () => {
+  const r = q({ cartId: "blend", quantities: { gelato: 100, matcha: 50 } });
+  assert.equal(lineAmount(r, "Gelato"), 100);
+  assert.equal(lineAmount(r, "Matcha"), 100);
+  assert.equal(r.totalCups, 150);
+  assert.equal(r.total, 230);
 });
 
-test("weekday dates carry no weekend surcharge", () => {
-  assert.equal(lineAmount(q({ date: "2026-06-02" }), "Weekend surcharge"), null);
+test("an unknown cart id falls back to the first cart", () => {
+  assert.equal(q({ cartId: "nope" }).cart.id, "icecream");
 });
 
-test("peak month and public holiday surcharges stack with the weekend", () => {
-  const r = q({ date: "2026-12-05", isHoliday: true }); // Saturday in December
-  assert.equal(lineAmount(r, "Weekend surcharge"), 100);
-  assert.equal(lineAmount(r, "Peak season"), 100);
-  assert.equal(lineAmount(r, "Public holiday surcharge"), 250);
+/* --- Extras ------------------------------------------------------------ */
+
+test("a per-cup extra is charged on the cups it applies to", () => {
+  const r = q({ quantities: { gelato: 100 }, cupExtras: ["cookies"] });
+  assert.equal(lineAmount(r, "Cookies"), 90); // 100 x 0.9
 });
 
-test("no date means no date-based surcharge", () => {
-  const r = q({ date: "" });
-  assert.equal(r.lines.some((l) => l.label.includes("surcharge")), false);
+test("extra toppings count only ice cream cups, branded cups count all", () => {
+  const r = q({
+    cartId: "blend",
+    quantities: { gelato: 100, matcha: 60 },
+    cupExtras: ["toppings", "branded_cups"],
+  });
+  assert.equal(lineAmount(r, "Extra toppings"), 20);  // 100 ice cream cups x 0.2
+  assert.equal(lineAmount(r, "Branded cups"), 40);    // 160 cups x 0.25
 });
 
-test("the best qualifying discount tier wins", () => {
-  const withTiers = {
-    ...cfg,
-    discounts: [
-      { minSubtotal: 1000, percent: 5, label: "5%" },
-      { minSubtotal: 1050, percent: 10, label: "10%" },
-      { minSubtotal: 9999, percent: 50, label: "50%" },
-    ],
-  };
-  const r = calculateQuote(base, withTiers);
-  assert.equal(r.discount.label, "10%");
-  assert.equal(r.discount.amount, 110);
-  assert.equal(r.total, 990);
+test("a per-cup extra below its minimum is billed at the minimum", () => {
+  const r = q({ quantities: { gelato: 20 }, cupExtras: ["toppings"] });
+  assert.equal(lineAmount(r, "Extra toppings"), 10); // 50 x 0.2
 });
 
-test("bookings under the minimum spend are topped up to it", () => {
-  const withMin = { ...cfg, fees: { ...cfg.fees, minimumSpend: 1500 } };
-  const r = calculateQuote(base, withMin);
-  assert.equal(r.minimumTopUp.amount, 400);
-  assert.equal(r.total, 1500);
-  assert.ok(r.warnings.some((w) => w.includes("minimum")));
+test("a per-cup extra is not charged when nothing it applies to is ordered", () => {
+  const r = q({ cartId: "drinks", quantities: { matcha: 60 }, cupExtras: ["branded_cups"] });
+  assert.equal(lineAmount(r, "Branded cups"), 15);
+  const none = q({ quantities: {}, cupExtras: ["branded_cups"] });
+  assert.equal(lineAmount(none, "Branded cups"), null);
 });
 
-test("tax applies after the discount, and the deposit after tax", () => {
+test("an extra belonging to another cart is ignored", () => {
+  const r = q({ cartId: "drinks", quantities: { matcha: 60 }, cupExtras: ["toppings"] });
+  assert.equal(lineAmount(r, "Extra toppings"), null);
+});
+
+test("flat extras are charged once, whatever the order size", () => {
+  const r = q({ flatExtras: ["female_server", "branded_cart"] });
+  assert.equal(lineAmount(r, "Female server"), 15);
+  assert.equal(lineAmount(r, "Branded cart"), 40);
+  assert.equal(r.total, 185); // 30 + 100 + 15 + 40
+});
+
+test("cupsForScope counts the right cups", () => {
+  const qty = { gelato: 100, softserve: 50, matcha: 30 };
+  assert.equal(cupsForScope("icecream", qty, cfg), 150);
+  assert.equal(cupsForScope("drinks", qty, cfg), 30);
+  assert.equal(cupsForScope("all", qty, cfg), 180);
+});
+
+/* --- The order minimum ------------------------------------------------- */
+
+test("an order under the cup minimum is flagged but still priced", () => {
+  const r = q({ quantities: { gelato: 30 } });
+  assert.equal(r.meetsMinimum, false);
+  assert.equal(r.total, 60);
+  assert.ok(r.warnings.some((w) => w.includes("20 more")));
+});
+
+test("an empty order asks for cups instead of quoting", () => {
+  const r = q({ quantities: {} });
+  assert.equal(r.totalCups, 0);
+  assert.equal(r.perCup, 0);
+  assert.ok(r.warnings.some((w) => w.includes("Choose how many cups")));
+});
+
+test("exactly the minimum is accepted without a warning", () => {
+  const r = q({ quantities: { gelato: 50 } });
+  assert.equal(r.meetsMinimum, true);
+  assert.equal(r.warnings.length, 0);
+});
+
+/* --- Totals ------------------------------------------------------------ */
+
+test("tax applies to the subtotal and the deposit to the total", () => {
   const taxed = {
     ...cfg,
-    discounts: [{ minSubtotal: 0, percent: 10, label: "10%" }],
-    tax: { percent: 20, label: "VAT" },
-    deposit: { percent: 50, label: "Deposit" },
+    tax: { percent: 5, label: "VAT" },
+    deposit: { percent: 30, label: "Deposit" },
   };
   const r = calculateQuote(base, taxed);
-  assert.equal(r.subtotal, 1100);
-  assert.equal(r.discount.amount, 110);
-  assert.equal(r.tax.amount, 198);   // 20% of 990
-  assert.equal(r.total, 1188);
-  assert.equal(r.deposit.amount, 594);
+  assert.equal(r.subtotal, 130);
+  assert.equal(r.tax.amount, 6.5);
+  assert.equal(r.total, 136.5);
+  assert.equal(r.deposit.amount, 40.95);
 });
 
-test("guests and hours outside the allowed range are clamped, not rejected", () => {
-  assert.equal(q({ guests: -5 }).guests, cfg.limits.minGuests);
-  assert.equal(q({ guests: 99999 }).guests, cfg.limits.maxGuests);
-  assert.equal(q({ hours: 0 }).hours, cfg.limits.minHours);
-  assert.equal(q({ hours: 99 }).hours, cfg.limits.maxHours);
-  assert.equal(q({ distance: -10 }).distance, 0);
+test("amounts round to the configured decimal places", () => {
+  const r = q({
+    cartId: "blend",
+    quantities: { gelato: 37, matcha: 13 },
+    cupExtras: ["branded_cups"],
+  });
+  [...r.lines.map((l) => l.amount), r.subtotal, r.total, r.perCup].forEach((a) => {
+    assert.equal(a, roundTo(a, 3));
+  });
 });
 
-test("understaffed bookings produce a warning with a suggested crew size", () => {
-  assert.equal(recommendedStaff(600, 3, cfg), 4); // 60/staff/hour
-  const r = q({ guests: 400, hours: 3, staff: 1 }); // 600 servings
-  assert.ok(r.warnings.some((w) => w.includes("4")));
-  assert.equal(r.recommendedStaff, 4);
+test("the per-cup figure matches the total", () => {
+  const r = q({ quantities: { gelato: 120 } });
+  assert.equal(r.perCup, roundTo(r.total / 120, 3));
 });
 
-test("a well-staffed booking produces no staffing warning", () => {
-  const r = q({ guests: 100, hours: 3, staff: 1 }); // 150 servings, capacity 180
-  assert.equal(r.warnings.some((w) => w.includes("suggest")), false);
+test("fractional or negative cup counts are cleaned up", () => {
+  assert.equal(q({ quantities: { gelato: -20 } }).totalCups, 0);
+  assert.equal(q({ quantities: { gelato: 10.6 } }).totalCups, 11);
 });
 
-test("every amount shown is rounded to two decimals", () => {
-  const r = q({ guests: 137, hours: 4.5, distance: 33, date: "2026-12-05" });
-  const amounts = [...r.lines.map((l) => l.amount), r.subtotal, r.total];
-  amounts.forEach((a) => assert.equal(a, Math.round(a * 100) / 100));
+/* --- Cups typed against one cart must not follow to another ------------- */
+
+test("cups for items the cart does not serve are never counted or charged", () => {
+  /* The form remembers what was typed for the blend cart; switching to the
+     ice cream cart must forget the drinks. */
+  const r = q({
+    cartId: "icecream",
+    quantities: { gelato: 120, matcha: 80, espresso: 40 },
+    cupExtras: ["branded_cups"],
+  });
+  assert.equal(r.totalCups, 120);
+  assert.equal(lineAmount(r, "Branded cups"), 30); // 120 cups, not 240
+  assert.equal(lineAmount(r, "Matcha"), null);
 });
 
-test("the per-guest figure matches the total", () => {
-  const r = q({ guests: 100 });
-  assert.equal(r.perGuest, Math.round((r.total / 100) * 100) / 100);
-});
-
-test("an unknown cart id falls back to the first cart instead of crashing", () => {
-  assert.equal(q({ packageId: "nope" }).package.id, "coffee");
-});
-
-/* --- Currency decimals and configurable weekend ------------------------ */
-
-test("amounts round to the configured decimal places (3 for rials)", () => {
-  const rials = {
-    ...cfg,
-    decimals: 3,
-    packages: [{ ...cfg.packages[0], basePrice: 0, includedServings: 0, perExtraServing: 0.3333 }],
-    fees: { ...cfg.fees, setupFee: 0 },
-  };
-  const r = calculateQuote({ ...base, guests: 11 }, rials); // 17 servings x 0.3333
-  assert.equal(lineAmount(r, "Additional servings"), 5.666);
-  assert.equal(r.total, 5.666);
-});
-
-test("two decimals stay the default when decimals is not set", () => {
-  const r = q({ guests: 11 }); // 17 servings, all included, base + set-up
-  assert.equal(r.total, 1100);
-  assert.equal(calculateQuote({ ...base, guests: 11 }, { ...cfg, decimals: 2 }).total, 1100);
-});
-
-test("the weekend can be set to Friday and Saturday", () => {
-  const oman = { ...cfg, surcharges: { ...cfg.surcharges, weekendDays: [5, 6] } };
-  // 2026-06-05 is a Friday, 2026-06-07 a Sunday.
-  assert.equal(lineAmount(calculateQuote({ ...base, date: "2026-06-05" }, oman), "Weekend"), 100);
-  assert.equal(lineAmount(calculateQuote({ ...base, date: "2026-06-07" }, oman), "Weekend"), null);
-  // With the default (Sat/Sun) the same Friday carries no surcharge.
-  assert.equal(lineAmount(q({ date: "2026-06-05" }), "Weekend"), null);
-});
-
-test("Oman VAT at 5% applies to the discounted subtotal", () => {
-  const vat = { ...cfg, decimals: 3, tax: { percent: 5, label: "VAT" } };
-  const r = calculateQuote(base, vat);
-  assert.equal(r.subtotal, 1100);
-  assert.equal(r.tax.amount, 55);
-  assert.equal(r.total, 1155);
+test("cupsForScope respects the cart when one is given", () => {
+  const qty = { gelato: 100, matcha: 30 };
+  const iceCart = cfg.carts[0];
+  assert.equal(cupsForScope("all", qty, cfg, iceCart), 100);
+  assert.equal(cupsForScope("all", qty, cfg, cfg.carts[2]), 130);
+  assert.equal(cupsForScope("all", qty, cfg), 130); // no cart = count everything
 });

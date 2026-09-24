@@ -1,8 +1,8 @@
 # Blended — Cart Hire Cost Calculator
 
-An online calculator for Blended's catering carts. A customer enters their event
-details — cart, date, guests, hours, staff, distance, add-ons — and sees an
-itemised cost estimate in Omani Rials that updates as they type.
+An online calculator for Blended's catering carts. A customer picks a cart, says
+how many cups of each item they would like, and sees an itemised cost estimate
+in Omani Rials that updates as they type.
 
 It is a plain website: no server, no database, no accounts, no build step. Open
 `index.html` and it works.
@@ -16,100 +16,87 @@ It is a plain website: no server, no database, no accounts, no build step. Open
 Open it, change the numbers, save, reload the page. You never need to touch any
 other file. Every setting has a comment above it explaining what it does.
 
-The things you will most likely want to change first:
+Amounts are in Omani Rials to 3 decimals (baisa): `1` is 1.000 OMR, `0.25` is
+250 baisa.
 
 | What | Where in the file |
 |---|---|
-| Your business name and tagline | `business` |
-| Currency and decimal places | `currency`, `locale`, `decimals` |
-| The carts you offer and what they cost | `packages` |
-| What each package includes (hours, servings, staff) | `packages → included…` |
-| Price of an extra hour / serving / staff member | `packages → extraHourRate`, `perExtraServing`, `staffing` |
-| Travel charges and your free radius | `travel` |
-| Set-up fee and minimum booking | `fees` |
-| Weekend, holiday and peak-season surcharges | `surcharges` |
-| Which days count as the weekend | `surcharges.weekendDays` |
-| The add-ons list and their prices | `addons` |
-| Volume discounts | `discounts` |
-| VAT / sales tax | `tax` |
+| Business name and tagline | `business` |
+| The service fee every booking starts with | `serviceFee` |
+| Smallest order you accept | `minimumCups` |
+| Hours included, and the extra-hour rate | `duration` |
+| Areas you cover and their travel charges | `locations` |
+| The three carts and what each one serves | `carts` |
+| Menu items and their per-cup prices | `menu` |
+| Extras charged per cup | `cupExtras` |
+| Extras charged once | `flatExtras` |
+| VAT | `tax` |
 | Deposit percentage | `deposit` |
 
-The page builds itself from this file — add a cart to `packages` or an add-on to
-`addons` and it appears on the form automatically.
+The page builds itself from this file — add a menu item, an area or an extra and
+it appears on the form automatically.
 
-### Currency
+### How a price is built
 
-The calculator is set to Omani Rials, written to three decimal places (baisa):
+1. **Service fee** — charged on every booking, covering the included hours.
+2. **The menu** — each item's cups × its `pricePerCup`.
+3. **Per-cup extras** — counted on the cups they apply to.
+4. **Flat extras** — charged once.
+5. **Location** — the charge for the chosen area.
+6. **Extra hours** — beyond the hours the service fee covers.
+7. **VAT**, then the **deposit** figure is shown for information.
+
+### Minimums
+
+Two different kinds, and they behave differently:
+
+- **`minimumCups`** (currently 50) is the smallest booking overall. An order
+  below it is still priced, but the customer is told how many cups short they
+  are.
+- **`minCups` on a menu item or extra** is the smallest quantity served of that
+  one thing. Order fewer and **the minimum is charged** — 120 cups of soft serve
+  bills as 200, and the breakdown says so in plain words.
+
+### Menu items
 
 ```js
-currency: "OMR",
-locale: "en-OM",   // "ar-OM" for Arabic numerals and ر.ع.
-decimals: 3,       // baisa. Use 2 for most other currencies.
+{
+  id: "gelato",            // never change this once it is live
+  group: "icecream",       // "icecream" or "drinks" — decides which carts show it
+  name: "Gelato",
+  pricePerCup: 1,
+  minCups: 200,            // optional; leave it out for no minimum
+  note: "Includes 3 toppings of your choice",
+}
 ```
 
-To switch currency, change all three. `decimals: 2` gives the usual
-two-decimal format for dollars, euros or dirhams.
+A cart's `serves` list decides which groups it offers, so the drinks cart never
+shows gelato and The Blend shows everything.
 
-### Weekend days
+### Extras
 
-Oman's weekend is Friday and Saturday, so the config carries:
+`cupExtras` are charged per cup, and `appliesTo` says which cups they are
+counted on — `"icecream"`, `"drinks"` or `"all"`. Extra toppings count only ice
+cream cups; branded cups count every cup.
+
+`flatExtras` are charged once, whatever the order size.
+
+### Areas
 
 ```js
-weekendDays: [5, 6],   // 0 = Sunday, 1 = Monday … 5 = Friday, 6 = Saturday
+locations: [
+  { id: "muscat", name: "Muscat", charge: 0 },
+  { id: "barka",  name: "Barka",  charge: 15 },
+],
 ```
 
-Change that list if your busy days are different. Leave it out and the
-calculator falls back to Saturday and Sunday.
-
-### VAT
-
-Oman VAT is 5%, but the calculator ships with `tax.percent: 0` — no tax line is
-shown. If you are VAT-registered and the prices in the config are *exclusive* of
-VAT, set `tax.percent: 5` and a VAT line is added after any discount. Leave it
-at 0 if your prices already include VAT.
-
-### Add-on pricing types
-
-Each add-on has a `type` that decides how it is charged:
-
-- `flat` — a single fixed charge
-- `perGuest` — price × number of guests
-- `perServing` — price × estimated servings
-- `perHour` — price × service hours
-
-Add `carts: ["coffee"]` to an add-on to show it only for certain carts. Leave it
-out and the add-on shows for all of them.
+Add a row for each area you cover. The first one in the list is the default.
 
 ### Turning something off
 
-Set the price to `0` and it disappears from the estimate. That works for
-`setupFee`, `minimumSpend`, `tax.percent`, `deposit.percent`, and every
-surcharge. For discounts, use an empty list: `discounts: []`.
-
----
-
-## How the price is worked out
-
-In order:
-
-1. **Base package** price for the chosen cart.
-2. **Extra hours** beyond what the package includes.
-3. **Extra servings** — guests are converted to servings using
-   `servingsPerGuest` (1.5 means most guests take one and some take two), then
-   anything above the included allowance is charged.
-4. **Extra staff** beyond the package, charged per person per hour.
-5. **Add-ons** the customer ticked.
-6. **Date surcharges** (weekend / public holiday / peak season) as a percentage
-   of items 1–5. Travel and the set-up fee are deliberately excluded. The
-   weekend is Friday–Saturday, and peak season is set to November–February.
-7. **Set-up fee**, then **travel** beyond your free radius (doubled if
-   `chargeRoundTrip` is on).
-8. **Volume discount** — the best qualifying tier.
-9. **Minimum booking** top-up, if the total is still below your minimum.
-10. **Tax**, then the **deposit** figure is shown for information.
-
-The calculator also warns the customer when the booking looks understaffed for
-the number of servings, using `servingsPerStaffPerHour` as the serving rate.
+Set a price to `0` and it disappears from the estimate — that works for
+`tax.percent` and `deposit.percent`. To drop a menu item, an extra or an area,
+delete its block from the list.
 
 ---
 
