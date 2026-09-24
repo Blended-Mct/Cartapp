@@ -88,6 +88,37 @@ function cupsForScope(scope, quantities, config, cart) {
 }
 
 /* -----------------------------------------------------------------------------
+   Groups whose total falls short of their own minimum.
+
+   A per-item minimum is held by its counter, but a rule about a total belongs
+   to no single counter, so it is checked here. A group nothing was ordered
+   from is not held to anything.
+--------------------------------------------------------------------------- */
+function groupShortfalls(quantities, config, cart, lang) {
+  const minimums = config.groupMinimums || {};
+  return Object.keys(minimums)
+    .filter((group) => cart.serves.includes(group))
+    .map((group) => {
+      const total = config.menu.reduce(
+        (sum, item) =>
+          item.group === group ? sum + (quantities[item.id] || 0) : sum,
+        0
+      );
+      return { group, total, minimum: minimums[group], short: minimums[group] - total };
+    })
+    .filter((row) => row.total > 0 && row.short > 0)
+    .map((row) => ({
+      ...row,
+      message: CALC_I18N.t("groupShort", lang, {
+        group: CALC_I18N.t(`group_${row.group}`, lang),
+        total: row.total,
+        minimum: row.minimum,
+        short: row.short,
+      }),
+    }));
+}
+
+/* -----------------------------------------------------------------------------
    calculateQuote(input, config)
 
    input = {
@@ -244,12 +275,22 @@ function calculateQuote(input, config, lang = "en") {
     warnings.push(t("chooseCupsLong"));
   }
 
+  /* The one rule no counter can hold on its own. */
+  const shortfalls = groupShortfalls(quantities, config, cart, lang);
+  shortfalls.forEach((row) => warnings.push(row.message));
+
   return {
     cart,
     location,
     hours,
     totalCups,
     hasOrder,
+    shortfalls,
+    /* Cups per group, so the page can count a group's progress live. */
+    groupTotals: cart.serves.reduce((totals, group) => {
+      totals[group] = cupsForScope(group, quantities, config, cart);
+      return totals;
+    }, {}),
     lines: lines.map((l) => ({ ...l, amount: round(l.amount) })),
     subtotal,
     tax,
@@ -262,7 +303,7 @@ function calculateQuote(input, config, lang = "en") {
 
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
-    calculateQuote, menuForCart, cupExtrasForCart, cupsForScope,
+    calculateQuote, menuForCart, cupExtrasForCart, cupsForScope, groupShortfalls,
     itemMinimum, normaliseCups, extraMinimum, normaliseQty, unitKeys,
     roundTo, clamp,
   };

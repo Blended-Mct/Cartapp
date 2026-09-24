@@ -42,6 +42,9 @@ const STRINGS = {
               "We serve from {cups} cups of any item.",
     servedFrom: "Each item is served from {cups} cups up{higher}. " +
                 "Add as many kinds as you like.",
+    eachItemMinimum:
+      "Each item shows the smallest quantity we serve of it, and you can mix " +
+      "as many kinds as you like.",
     servedFromItem: "{name} from {cups}",
     fromCups: "from {cups} cups",
     fromPieces: "from {cups} pieces",
@@ -52,6 +55,13 @@ const STRINGS = {
     moreOf: "More {name}",
     howMany: "How many {name}",
     cupsTotal: "{cups} cups in total.",
+    group_icecream: "Ice cream",
+    group_drinks: "Drinks",
+    groupShort:
+      "{group} must come to at least {minimum} cups in total — " +
+      "{total} so far, {short} to go.",
+    groupRule: "{group} must come to at least {cups} cups in total.",
+    groupProgress: "{group}: {total} of {minimum} cups.",
     nothingChosen: "Nothing chosen yet.",
     fewerCups: "Fewer cups of {name}",
     moreCups: "More cups of {name}",
@@ -148,6 +158,8 @@ const STRINGS = {
               "نقدّم من {cups} كوبًا لكل صنف.",
     servedFrom: "كل صنف يُقدَّم ابتداءً من {cups} كوبًا{higher}. " +
                 "أضف ما تشاء من الأصناف.",
+    eachItemMinimum:
+      "يوضّح كل صنف أقل كمية نقدّمها منه، ويمكنك المزج بين ما تشاء من الأصناف.",
     servedFromItem: "{name} من {cups}",
     fromCups: "من {cups} كوبًا",
     fromPieces: "من {cups} قطعة",
@@ -158,6 +170,13 @@ const STRINGS = {
     moreOf: "زيادة {name}",
     howMany: "كم {name}",
     cupsTotal: "المجموع {cups} كوبًا.",
+    group_icecream: "الآيس كريم",
+    group_drinks: "المشروبات",
+    groupShort:
+      "يجب ألّا يقلّ مجموع {group} عن {minimum} كوبًا — " +
+      "{total} حتى الآن، وتبقّى {short}.",
+    groupRule: "يجب ألّا يقلّ مجموع {group} عن {cups} كوبًا.",
+    groupProgress: "{group}: {total} من {minimum} كوبًا.",
     nothingChosen: "لم يتم اختيار شيء بعد.",
     fewerCups: "تقليل أكواب {name}",
     moreCups: "زيادة أكواب {name}",

@@ -54,9 +54,11 @@ it appears on the form automatically.
 
 ### Minimums
 
-**`minimumCups`** (currently 50) is the smallest quantity served of any one
-item. A menu item can set a higher one of its own with **`minCups`** — soft
-serve is 200.
+There are two kinds.
+
+**Per item.** **`minimumCups`** (currently 50) is the smallest quantity served
+of any one item, and an item can set its own with **`minCups`** — soft serve
+needs 200, while matcha and iced tea go from 10.
 
 The minimum is enforced **by the cup counter itself**, not checked later:
 
@@ -68,8 +70,27 @@ The minimum is enforced **by the cup counter itself**, not checked later:
 - Every item shows its minimum as a badge (*from 50 cups*), so it is known
   before anything is chosen.
 
-So an order below a minimum cannot be built, and there is nothing to warn about
-or reject at the end. The only order that cannot be sent is an empty one.
+So an order below an item's own minimum cannot be built, and there is nothing to
+warn about or reject at the end.
+
+**Per group.** `groupMinimums` holds rules about a *total* — currently
+`drinks: 50`. Matcha and iced tea can be ordered from 10 cups each, but whatever
+is taken from the drinks menu has to come to 50 between them.
+
+This is the one rule a counter cannot hold, because no single counter owns a
+total. So instead it is:
+
+- stated under the menu, before anything is chosen
+- counted live as the customer orders (*"Drinks: 20 of 50 cups"*)
+- shown as a warning beside the price the moment it is broken
+- checked again before an enquiry can be sent
+
+A group nothing was ordered from is not held to its minimum, so an ice-cream-only
+booking on The Blend is fine. Ice cream cups do not count towards the drinks
+total, and a cart that does not serve drinks never sees the rule.
+
+Adding a rule for ice cream is one line: `groupMinimums: { drinks: 50,
+icecream: 100 }`.
 
 ### Menu items
 

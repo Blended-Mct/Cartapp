@@ -141,7 +141,7 @@ const PRICING = {
     },
     {
       id: "matcha", group: "drinks", name: "Matcha", name_ar: "ماتشا",
-      pricePerCup: 2,
+      pricePerCup: 2, minCups: 10,
       note: "Ceremonial grade, iced or hot",
       note_ar: "درجة احتفالية، باردة أو ساخنة",
     },
@@ -155,11 +155,23 @@ const PRICING = {
     {
       id: "other_drinks", group: "drinks", name: "Iced tea & hibiscus",
       name_ar: "شاي مثلج وكركديه",
-      pricePerCup: 1.5,
+      pricePerCup: 1.5, minCups: 10,
       note: "Refreshing, caffeine-free options",
       note_ar: "خيارات منعشة وخالية من الكافيين",
     },
   ],
+
+  /* --- Minimums that apply to a whole group, not one item --------------
+     Matcha and iced tea can be ordered from 10 cups, but the drinks have to
+     add up to something worth bringing a cart for. This is the only rule the
+     counters cannot enforce on their own — no single counter owns a total —
+     so it is stated under the menu, counted live as the customer orders, and
+     checked before an enquiry can be sent.
+
+     A group with nothing ordered from it is not held to its minimum.        */
+  groupMinimums: {
+    drinks: 50,
+  },
 
   /* --- Extras charged per cup ------------------------------------------
      appliesTo : "icecream", "drinks" or "all" — which cups it is counted on */

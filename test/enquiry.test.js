@@ -25,8 +25,13 @@ const cfg = {
   ],
   carts: [
     { id: "icecream", name: "Ice Cream Cart", blurb: "", emoji: "", serves: ["icecream"] },
+    { id: "drinks", name: "Drinks Cart", blurb: "", emoji: "", serves: ["drinks"] },
   ],
-  menu: [{ id: "gelato", group: "icecream", name: "Gelato", pricePerCup: 1 }],
+  menu: [
+    { id: "gelato", group: "icecream", name: "Gelato", pricePerCup: 1 },
+    { id: "matcha", group: "drinks", name: "Matcha", pricePerCup: 2, minCups: 10 },
+  ],
+  groupMinimums: { drinks: 50 },
   cupExtras: [],
   flatExtras: [],
   tax: { percent: 0, label: "VAT" },
@@ -130,6 +135,32 @@ test("email is optional but must look like an email when given", () => {
   assert.ok(check({ email: "not-an-email" }).errors.email);
   assert.ok(check({ email: "missing@domain" }).errors.email);
   assert.equal(check({ email: "a@b.om" }).ok, true);
+});
+
+test("an order that breaks a group rule cannot be sent", () => {
+  const short = calculateQuote(
+    {
+      cartId: "drinks", quantities: { matcha: 10 },
+      locationId: "muscat", hours: 3, cupExtras: [], flatExtras: [],
+    },
+    cfg
+  );
+  const { ok, errors } = validateEnquiry(good, short, cfg, TODAY);
+  assert.equal(ok, false);
+  /* The customer is told the actual rule, not a generic refusal. */
+  assert.match(errors.cups, /50/);
+  assert.match(errors.cups, /Drinks/);
+});
+
+test("the same order once the group rule is met sends fine", () => {
+  const enough = calculateQuote(
+    {
+      cartId: "drinks", quantities: { matcha: 50 },
+      locationId: "muscat", hours: 3, cupExtras: [], flatExtras: [],
+    },
+    cfg
+  );
+  assert.equal(validateEnquiry(good, enough, cfg, TODAY).ok, true);
 });
 
 test("an empty order cannot be sent", () => {

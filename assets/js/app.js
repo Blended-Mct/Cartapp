@@ -98,16 +98,20 @@
       hours: cfg.duration.includedHours,
       cups: cfg.minimumCups,
     });
-    /* Name any item whose own minimum is higher, so it is no surprise. */
-    const higher = cfg.menu
-      .filter((item) => Number.isFinite(item.minCups) && item.minCups > cfg.minimumCups)
-      .map((item) =>
-        say("servedFromItem", { name: nameOf(item), cups: item.minCups })
+
+    /* Each row already carries its own minimum, so rather than list the
+       exceptions here, say the one rule the rows cannot show: the group
+       totals. Only the groups this cart serves are mentioned. */
+    const cart = currentCart();
+    const rules = Object.keys(cfg.groupMinimums || {})
+      .filter((group) => cart.serves.includes(group))
+      .map((group) =>
+        say("groupRule", {
+          group: say(`group_${group}`),
+          cups: cfg.groupMinimums[group],
+        })
       );
-    el.menuMinimumNote.textContent = say("servedFrom", {
-      cups: cfg.minimumCups,
-      higher: higher.length ? `, ${higher.join(", ")}` : "",
-    });
+    el.menuMinimumNote.textContent = [say("eachItemMinimum"), ...rules].join(" ");
     el.chooseLaterNote.textContent = localised(cfg.messages, "chooseLater", lang);
   }
 
@@ -139,6 +143,7 @@
       el.cartOptions.querySelectorAll(".cart-option").forEach((o) => {
         o.classList.toggle("is-selected", o.querySelector("input").checked);
       });
+      applyMinimumText();
       renderMenu();
       renderExtras();
       update();
@@ -514,9 +519,22 @@
           })
         : say("noTravelCharge", { place: nameOf(q.location) });
 
-    el.cupsTotal.textContent = q.hasOrder
-      ? say("cupsTotal", { cups: q.totalCups })
-      : say("nothingChosen");
+    /* The running total, plus each group that is short, counted out so the
+       customer can see how far off they are rather than being told at the end. */
+    const parts = q.hasOrder
+      ? [say("cupsTotal", { cups: q.totalCups })]
+      : [say("nothingChosen")];
+    q.shortfalls.forEach((row) =>
+      parts.push(
+        say("groupProgress", {
+          group: say(`group_${row.group}`),
+          total: row.total,
+          minimum: row.minimum,
+        })
+      )
+    );
+    el.cupsTotal.textContent = parts.join(" ");
+    el.cupsTotal.classList.toggle("is-alert", q.shortfalls.length > 0);
   }
 
   /* Highlight the rows the customer has actually ordered. */

@@ -72,10 +72,13 @@ function validateEnquiry(details, quote, config, today = new Date(), lang = "en"
     errors.email = t("errEmail");
   }
 
-  /* The cup counters hold every quantity at or above its minimum, so the only
-     order that cannot be sent is an empty one. */
+  /* The cup counters hold every quantity at or above its own minimum, so the
+     only orders that cannot be sent are an empty one and one that breaks a
+     rule about a total, which no single counter can hold. */
   if (!quote.hasOrder) {
     errors.cups = t("errCups");
+  } else if (quote.shortfalls && quote.shortfalls.length) {
+    errors.cups = quote.shortfalls[0].message;
   }
 
   return { ok: Object.keys(errors).length === 0, errors };

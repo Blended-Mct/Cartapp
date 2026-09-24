@@ -33,12 +33,14 @@ const cfg = {
     { id: "gelato", group: "icecream", name: "Gelato", pricePerCup: 1 },
     { id: "softserve", group: "icecream", name: "Soft serve", pricePerCup: 1.5, minCups: 200 },
     { id: "espresso", group: "drinks", name: "Espresso", pricePerCup: 1.5 },
-    { id: "matcha", group: "drinks", name: "Matcha", pricePerCup: 2 },
+    { id: "matcha", group: "drinks", name: "Matcha", pricePerCup: 2, minCups: 10 },
+    { id: "tea", group: "drinks", name: "Iced tea", pricePerCup: 1.5, minCups: 10 },
     { id: "creamy", group: "drinks", name: "Creamy matcha", pricePerCup: 1.5 },
   ],
   cupExtras: [
     { id: "toppings", name: "Extra toppings", pricePerCup: 0.2, appliesTo: "icecream" },
   ],
+  groupMinimums: { drinks: 50 },
   quantityExtras: [
     { id: "cookies", name: "Cookies", pricePerUnit: 0.9, minQty: 1, unit: "piece" },
     { id: "cups", name: "Branded cups", pricePerUnit: 0.25, minQty: 50, unit: "cup" },
@@ -340,4 +342,84 @@ test("the unit only changes the wording, never the arithmetic", () => {
   const r = q({ extraQuantities: { cookies: 40, cups: 80 } });
   assert.match(r.lines.find((l) => l.label === "Cookies").detail, /^40 pieces/);
   assert.match(r.lines.find((l) => l.label === "Branded cups").detail, /^80 cups/);
+});
+
+
+/* --- A minimum that belongs to a whole group ---------------------------- */
+
+test("matcha and iced tea can be ordered from 10, unlike the rest", () => {
+  assert.equal(itemMinimum(cfg.menu.find((m) => m.id === "matcha"), cfg), 10);
+  assert.equal(itemMinimum(cfg.menu.find((m) => m.id === "tea"), cfg), 10);
+  assert.equal(itemMinimum(cfg.menu.find((m) => m.id === "espresso"), cfg), 50);
+  assert.equal(itemMinimum(cfg.menu.find((m) => m.id === "creamy"), cfg), 50);
+});
+
+test("drinks short of the group total are reported, not silently accepted", () => {
+  const r = q({ cartId: "drinks", quantities: { matcha: 10 } });
+  assert.equal(r.shortfalls.length, 1);
+  assert.deepEqual(
+    { group: r.shortfalls[0].group, total: r.shortfalls[0].total, short: r.shortfalls[0].short },
+    { group: "drinks", total: 10, short: 40 }
+  );
+  assert.ok(r.warnings.some((w) => w.includes("50")));
+});
+
+test("small orders of several drinks add up to satisfy the rule", () => {
+  const short = q({ cartId: "drinks", quantities: { matcha: 10, tea: 20 } });
+  assert.equal(short.shortfalls.length, 1);
+  assert.equal(short.shortfalls[0].total, 30);
+
+  const enough = q({ cartId: "drinks", quantities: { matcha: 30, tea: 20 } });
+  assert.deepEqual(enough.shortfalls, []);
+  assert.deepEqual(enough.warnings, []);
+});
+
+test("exactly the group minimum is enough", () => {
+  assert.deepEqual(q({ cartId: "drinks", quantities: { matcha: 50 } }).shortfalls, []);
+});
+
+test("one item over its own minimum can satisfy the group on its own", () => {
+  /* Espresso's own minimum is 50, so ordering any at all clears the group. */
+  assert.deepEqual(q({ cartId: "drinks", quantities: { espresso: 50 } }).shortfalls, []);
+});
+
+test("a group nothing was ordered from is not held to its minimum", () => {
+  /* Ice cream only, on a cart that serves drinks too. */
+  const r = q({ cartId: "blend", quantities: { gelato: 100 } });
+  assert.deepEqual(r.shortfalls, []);
+});
+
+test("ice cream cups do not count towards the drinks minimum", () => {
+  const r = q({ cartId: "blend", quantities: { gelato: 300, matcha: 10 } });
+  assert.equal(r.totalCups, 310);
+  assert.equal(r.shortfalls.length, 1);
+  assert.equal(r.shortfalls[0].total, 10); // the matcha alone
+});
+
+test("a cart that serves no drinks is never held to the drinks rule", () => {
+  const r = q({ cartId: "icecream", quantities: { gelato: 50 } });
+  assert.deepEqual(r.shortfalls, []);
+});
+
+test("the shortfall carries a message ready to show", () => {
+  const r = q({ cartId: "drinks", quantities: { matcha: 10 } });
+  assert.match(r.shortfalls[0].message, /Drinks/);
+  assert.match(r.shortfalls[0].message, /50/);
+  assert.match(r.shortfalls[0].message, /40/);
+  const ar = calculateQuote(
+    { ...base, cartId: "drinks", quantities: { matcha: 10 } }, cfg, "ar"
+  );
+  assert.match(ar.shortfalls[0].message, /[\u0600-\u06FF]/);
+});
+
+test("group totals are reported for the groups the cart serves", () => {
+  const r = q({ cartId: "blend", quantities: { gelato: 100, matcha: 60 } });
+  assert.deepEqual(r.groupTotals, { icecream: 100, drinks: 60 });
+  const ice = q({ cartId: "icecream", quantities: { gelato: 100 } });
+  assert.deepEqual(ice.groupTotals, { icecream: 100 });
+});
+
+test("a shortfall changes nothing about the price", () => {
+  const r = q({ cartId: "drinks", quantities: { matcha: 10 } });
+  assert.equal(r.total, 50); // 30 service fee + 10 x 2
 });
