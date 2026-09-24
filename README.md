@@ -31,6 +31,7 @@ Amounts are in Omani Rials to 3 decimals (baisa): `1` is 1.000 OMR, `0.25` is
 | The three carts and what each one serves | `carts` |
 | Menu items and their per-cup prices | `menu` |
 | Extras charged per cup | `cupExtras` |
+| Extras the customer counts out | `quantityExtras` |
 | Extras charged once | `flatExtras` |
 | Where enquiries are emailed | `enquiry` |
 | VAT | `tax` |
@@ -88,12 +89,17 @@ shows gelato and The Blend shows everything.
 
 ### Extras
 
-`cupExtras` are charged per cup, and `appliesTo` says which cups they are
-counted on — `"icecream"`, `"drinks"` or `"all"`. Extra toppings count only ice
-cream cups; branded cups count every cup. They follow the cups actually charged,
-so they inherit the counters' minimums automatically.
+There are three kinds, and which one to use depends on how you charge:
 
-`flatExtras` are charged once, whatever the order size.
+- **`quantityExtras`** get their own counter, because the number wanted is
+  rarely the number of cups ordered. Cookies at 0.900 each and branded cups at
+  0.250 each work this way. Each has a `minQty` the counter will not go below
+  (cookies 1, so effectively none; branded cups 50) and a `unit` of `"piece"` or
+  `"cup"`, which only decides the wording.
+- **`cupExtras`** are charged per cup ordered, with `appliesTo` saying which
+  cups count — `"icecream"`, `"drinks"` or `"all"`. Extra toppings work this
+  way, counted on ice cream cups only.
+- **`flatExtras`** are charged once, whatever the order size.
 
 ### What the customer must fill in
 

@@ -73,6 +73,8 @@
   /* Cup counts are kept here rather than read off the inputs, so switching
      cart does not lose what the customer already typed. */
   let quantities = {};
+  /* Quantities for the extras the customer counts out (cookies, branded cups). */
+  let extraQuantities = {};
 
   /* --- Static text from the config ------------------------------------ */
   function applyBusinessText() {
@@ -147,6 +149,82 @@
     return cfg.carts.find((c) => c.id === selectedCartId) || cfg.carts[0];
   }
 
+  /* -----------------------------------------------------------------------
+     One row with a counter. The menu and the extras that are counted out
+     share it, so both behave the same way.
+  --------------------------------------------------------------------- */
+  function counterRow(opts) {
+    const row = document.createElement("div");
+    row.className = "menu-item";
+    row.innerHTML = `
+      <div class="menu-item-text">
+        <span class="menu-item-name"></span>
+        <span class="menu-item-note"></span>
+        <span class="menu-item-price">${opts.priceLabel}</span>
+        <span class="menu-item-min">${opts.minLabel}</span>
+      </div>
+      <div class="qty">
+        <button type="button" class="qty-btn" data-step="-${STEP}"
+                aria-label="${opts.lessLabel}">−</button>
+        <input type="number" class="qty-input" inputmode="numeric"
+               min="0" max="5000" step="${STEP}" value="${opts.value || 0}"
+               data-item="${opts.id}" data-store="${opts.store}"
+               data-min="${opts.min}" aria-label="${opts.inputLabel}">
+        <button type="button" class="qty-btn" data-step="${STEP}"
+                aria-label="${opts.moreLabel}">+</button>
+      </div>`;
+    row.querySelector(".menu-item-name").textContent = opts.name;
+    row.querySelector(".menu-item-note").textContent = opts.note || "";
+    return row;
+  }
+
+  /* Where a counter's value is kept. */
+  function storeFor(name) {
+    return name === "extra" ? extraQuantities : quantities;
+  }
+
+  /* Wires every counter inside a container. Called after each redraw, on
+     freshly made elements, so no listener is ever bound twice. */
+  function wireCounters(container) {
+    container.querySelectorAll(".qty-btn").forEach((button) => {
+      button.addEventListener("click", () => {
+        const input = button.parentElement.querySelector(".qty-input");
+        const min = Number(input.dataset.min);
+        const current = Number(input.value) || 0;
+        const step = Number(button.dataset.step);
+
+        /* From nothing, the first press jumps straight to the minimum. At the
+           minimum, stepping down clears it rather than landing on a quantity
+           we do not supply. */
+        let next;
+        if (step > 0) {
+          next = current === 0 ? Math.max(min, step) : current + step;
+        } else if (current <= min) {
+          next = 0;
+        } else {
+          next = Math.max(min, current + step);
+        }
+
+        input.value = next;
+        storeFor(input.dataset.store)[input.dataset.item] = next;
+        update();
+      });
+    });
+
+    /* A typed number is corrected when the customer leaves the box, so they
+       are never told off mid-keystroke. */
+    container.querySelectorAll(".qty-input").forEach((input) => {
+      input.addEventListener("change", () => {
+        const min = Number(input.dataset.min);
+        const typed = Math.round(Number(input.value) || 0);
+        const corrected = typed <= 0 ? 0 : Math.max(typed, min);
+        input.value = corrected;
+        storeFor(input.dataset.store)[input.dataset.item] = corrected;
+        update();
+      });
+    });
+  }
+
   /* --- The menu, grouped, showing only what this cart serves ----------- */
   function renderMenu() {
     const cart = currentCart();
@@ -166,68 +244,25 @@
 
       items.forEach((item) => {
         const min = itemMinimum(item, cfg);
-        const row = document.createElement("div");
-        row.className = "menu-item";
-        row.innerHTML = `
-          <div class="menu-item-text">
-            <span class="menu-item-name"></span>
-            <span class="menu-item-note"></span>
-            <span class="menu-item-price">${say("perCup", { amount: fmt(item.pricePerCup) })}</span>
-            <span class="menu-item-min">${say("fromCups", { cups: min })}</span>
-          </div>
-          <div class="qty">
-            <button type="button" class="qty-btn" data-step="-${STEP}"
-                    aria-label="${say("fewerCups", { name: nameOf(item) })}">−</button>
-            <input type="number" class="qty-input" inputmode="numeric"
-                   min="0" max="5000" step="${STEP}" value="${quantities[item.id] || 0}"
-                   data-item="${item.id}" data-min="${min}"
-                   aria-label="${say("cupsOf", { name: nameOf(item) })}">
-            <button type="button" class="qty-btn" data-step="${STEP}"
-                    aria-label="${say("moreCups", { name: nameOf(item) })}">+</button>
-          </div>`;
-        row.querySelector(".menu-item-name").textContent = nameOf(item);
-        row.querySelector(".menu-item-note").textContent = noteOf(item);
-        el.menu.appendChild(row);
+        el.menu.appendChild(
+          counterRow({
+            id: item.id,
+            store: "menu",
+            min,
+            value: quantities[item.id] || 0,
+            name: nameOf(item),
+            note: noteOf(item),
+            priceLabel: say("perCup", { amount: fmt(item.pricePerCup) }),
+            minLabel: say("fromCups", { cups: min }),
+            lessLabel: say("fewerCups", { name: nameOf(item) }),
+            moreLabel: say("moreCups", { name: nameOf(item) }),
+            inputLabel: say("cupsOf", { name: nameOf(item) }),
+          })
+        );
       });
     });
 
-    el.menu.querySelectorAll(".qty-btn").forEach((button) => {
-      button.addEventListener("click", () => {
-        const input = button.parentElement.querySelector(".qty-input");
-        const min = Number(input.dataset.min);
-        const current = Number(input.value) || 0;
-        const step = Number(button.dataset.step);
-
-        /* From nothing, the first press jumps straight to the minimum. At the
-           minimum, stepping down clears the item rather than landing on a
-           quantity we do not serve. */
-        let next;
-        if (step > 0) {
-          next = current === 0 ? min : current + step;
-        } else if (current <= min) {
-          next = 0;
-        } else {
-          next = Math.max(min, current + step);
-        }
-
-        input.value = next;
-        quantities[input.dataset.item] = next;
-        update();
-      });
-    });
-
-    /* A typed number is corrected when the customer leaves the box, so they
-       are never told off mid-keystroke. */
-    el.menu.querySelectorAll(".qty-input").forEach((input) => {
-      input.addEventListener("change", () => {
-        const min = Number(input.dataset.min);
-        const typed = Math.round(Number(input.value) || 0);
-        const corrected = typed <= 0 ? 0 : Math.max(typed, min);
-        input.value = corrected;
-        quantities[input.dataset.item] = corrected;
-        update();
-      });
-    });
+    wireCounters(el.menu);
   }
 
   /* --- Extras, filtered to the ones this cart can offer ---------------- */
@@ -236,11 +271,41 @@
     const previously = new Set(selectedExtras());
     el.extras.innerHTML = "";
 
-    const cupExtras = cfg.cupExtras.filter(
-      (e) => e.appliesTo === "all" || cart.serves.includes(e.appliesTo)
-    );
+    /* Extras with a quantity get a counter each, in their own row. */
+    const counted = cfg.quantityExtras || [];
+    if (counted.length) {
+      const list = document.createElement("div");
+      list.className = "extra-counters";
+      counted.forEach((extra) => {
+        const min = extraMinimum(extra);
+        const keys = unitKeys(extra);
+        list.appendChild(
+          counterRow({
+            id: extra.id,
+            store: "extra",
+            min,
+            value: extraQuantities[extra.id] || 0,
+            name: nameOf(extra),
+            note: noteOf(extra),
+            priceLabel: say(keys.per, { amount: fmt(extra.pricePerUnit) }),
+            /* A minimum of one is no minimum worth announcing. */
+            minLabel: min > 1 ? say(keys.from, { cups: min }) : "",
+            lessLabel: say("fewerOf", { name: nameOf(extra) }),
+            moreLabel: say("moreOf", { name: nameOf(extra) }),
+            inputLabel: say("howMany", { name: nameOf(extra) }),
+          })
+        );
+      });
+      el.extras.appendChild(list);
+      wireCounters(list);
+    }
 
-    cupExtras
+    /* Everything else stays a tick box. */
+    const boxes = document.createElement("div");
+    boxes.className = "addons";
+
+    cfg.cupExtras
+      .filter((e) => e.appliesTo === "all" || cart.serves.includes(e.appliesTo))
       .map((e) => ({
         ...e,
         priceLabel: say("perCup", { amount: fmt(e.pricePerCup) }),
@@ -263,8 +328,10 @@
           </span>`;
         label.querySelector(".addon-name").textContent = nameOf(extra);
         label.querySelector(".addon-note").textContent = noteOf(extra);
-        el.extras.appendChild(label);
+        boxes.appendChild(label);
       });
+
+    el.extras.appendChild(boxes);
   }
 
   function selectedExtras(kind) {
@@ -364,6 +431,7 @@
       hours: Number(el.hours.value),
       cupExtras: selectedExtras("cup"),
       flatExtras: selectedExtras("flat"),
+      extraQuantities,
     };
   }
 
@@ -453,8 +521,8 @@
 
   /* Highlight the rows the customer has actually ordered. */
   function markChosenItems() {
-    el.menu.querySelectorAll(".qty-input").forEach((input) => {
-      const ordered = (quantities[input.dataset.item] || 0) > 0;
+    document.querySelectorAll(".qty-input").forEach((input) => {
+      const ordered = (storeFor(input.dataset.store)[input.dataset.item] || 0) > 0;
       input.closest(".menu-item").classList.toggle("is-chosen", ordered);
     });
   }
@@ -778,6 +846,7 @@
       el.form.reset();
       selectedCartId = cfg.carts[0].id;
       quantities = {};
+      extraQuantities = {};
       el.cartOptions.querySelectorAll(".cart-option").forEach((o, i) => {
         o.querySelector("input").checked = i === 0;
         o.classList.toggle("is-selected", i === 0);

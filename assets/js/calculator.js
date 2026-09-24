@@ -45,6 +45,30 @@ function menuForCart(cart, config) {
   return config.menu.filter((item) => cart.serves.includes(item.group));
 }
 
+/* Which words an extra is counted in: pieces or cups. Only the wording
+   differs — the arithmetic is the same either way. */
+const UNIT_KEYS = {
+  piece: { per: "perPiece", from: "fromPieces", times: "piecesTimes" },
+  cup: { per: "perCup", from: "fromCups", times: "cupsTimes" },
+};
+
+function unitKeys(item) {
+  return UNIT_KEYS[item && item.unit] || UNIT_KEYS.cup;
+}
+
+/* The smallest quantity we supply of an extra the customer counts out. */
+function extraMinimum(extra) {
+  return Number.isFinite(extra.minQty) ? extra.minQty : 1;
+}
+
+/* A raw quantity, cleaned up: whole units, and either none or at least the
+   minimum. The counters hold to this, so it can never be too small. */
+function normaliseQty(raw, extra) {
+  const qty = Math.round(Number(raw) || 0);
+  if (qty <= 0) return 0;
+  return Math.max(qty, extraMinimum(extra));
+}
+
 /* The per-cup extras that make sense for a given cart. */
 function cupExtrasForCart(cart, config) {
   return config.cupExtras.filter(
@@ -138,6 +162,18 @@ function calculateQuote(input, config, lang = "en") {
     });
   });
 
+  /* 3b. Extras the customer counts out for themselves ---------------------- */
+  (config.quantityExtras || []).forEach((extra) => {
+    const qty = normaliseQty((input.extraQuantities || {})[extra.id], extra);
+    if (qty <= 0) return;
+
+    lines.push({
+      label: name(extra),
+      detail: t(unitKeys(extra).times, { cups: qty, price: extra.pricePerUnit }),
+      amount: qty * extra.pricePerUnit,
+    });
+  });
+
   /* 4. Extras charged once ------------------------------------------------ */
   (input.flatExtras || [])
     .map((id) => config.flatExtras.find((e) => e.id === id))
@@ -227,6 +263,7 @@ function calculateQuote(input, config, lang = "en") {
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     calculateQuote, menuForCart, cupExtrasForCart, cupsForScope,
-    itemMinimum, normaliseCups, roundTo, clamp,
+    itemMinimum, normaliseCups, extraMinimum, normaliseQty, unitKeys,
+    roundTo, clamp,
   };
 }

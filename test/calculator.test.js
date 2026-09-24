@@ -6,8 +6,10 @@
 
 const assert = require("node:assert/strict");
 const { test } = require("node:test");
-const { calculateQuote, cupsForScope, itemMinimum, normaliseCups, roundTo } =
-  require("../assets/js/calculator.js");
+const {
+  calculateQuote, cupsForScope, itemMinimum, normaliseCups,
+  extraMinimum, normaliseQty, roundTo,
+} = require("../assets/js/calculator.js");
 
 /* A small, predictable price list — easy to check the arithmetic by hand. */
 const cfg = {
@@ -36,8 +38,10 @@ const cfg = {
   ],
   cupExtras: [
     { id: "toppings", name: "Extra toppings", pricePerCup: 0.2, appliesTo: "icecream" },
-    { id: "cookies", name: "Cookies", pricePerCup: 0.9, appliesTo: "icecream" },
-    { id: "branded_cups", name: "Branded cups", pricePerCup: 0.25, appliesTo: "all" },
+  ],
+  quantityExtras: [
+    { id: "cookies", name: "Cookies", pricePerUnit: 0.9, minQty: 1, unit: "piece" },
+    { id: "cups", name: "Branded cups", pricePerUnit: 0.25, minQty: 50, unit: "cup" },
   ],
   flatExtras: [
     { id: "female_server", name: "Female server", price: 15 },
@@ -55,6 +59,7 @@ const base = {
   hours: 3,
   cupExtras: [],
   flatExtras: [],
+  extraQuantities: {},
 };
 
 const q = (over = {}) => calculateQuote({ ...base, ...over }, cfg);
@@ -166,18 +171,8 @@ test("an unknown cart id falls back to the first cart", () => {
 /* --- Extras ------------------------------------------------------------ */
 
 test("a per-cup extra is charged on the cups it applies to", () => {
-  const r = q({ quantities: { gelato: 100 }, cupExtras: ["cookies"] });
-  assert.equal(lineAmount(r, "Cookies"), 90); // 100 x 0.9
-});
-
-test("extra toppings count only ice cream cups, branded cups count all", () => {
-  const r = q({
-    cartId: "blend",
-    quantities: { gelato: 100, matcha: 60 },
-    cupExtras: ["toppings", "branded_cups"],
-  });
-  assert.equal(lineAmount(r, "Extra toppings"), 20);  // 100 ice cream cups x 0.2
-  assert.equal(lineAmount(r, "Branded cups"), 40);    // 160 cups x 0.25
+  const r = q({ cartId: "blend", quantities: { gelato: 100, matcha: 60 }, cupExtras: ["toppings"] });
+  assert.equal(lineAmount(r, "Extra toppings"), 20); // 100 ice cream cups x 0.2
 });
 
 test("a per-cup extra follows the cups actually charged", () => {
@@ -187,10 +182,8 @@ test("a per-cup extra follows the cups actually charged", () => {
 });
 
 test("a per-cup extra is not charged when nothing it applies to is ordered", () => {
-  const r = q({ cartId: "drinks", quantities: { matcha: 60 }, cupExtras: ["branded_cups"] });
-  assert.equal(lineAmount(r, "Branded cups"), 15);
-  const none = q({ quantities: {}, cupExtras: ["branded_cups"] });
-  assert.equal(lineAmount(none, "Branded cups"), null);
+  const none = q({ cartId: "drinks", quantities: { matcha: 60 }, cupExtras: ["toppings"] });
+  assert.equal(lineAmount(none, "Extra toppings"), null); // no ice cream cups
 });
 
 test("an extra belonging to another cart is ignored", () => {
@@ -273,10 +266,10 @@ test("cups for items the cart does not serve are never counted or charged", () =
   const r = q({
     cartId: "icecream",
     quantities: { gelato: 120, matcha: 80, espresso: 50 },
-    cupExtras: ["branded_cups"],
+    cupExtras: ["toppings"],
   });
   assert.equal(r.totalCups, 120);
-  assert.equal(lineAmount(r, "Branded cups"), 30); // 120 cups, not 240
+  assert.equal(lineAmount(r, "Extra toppings"), 24); // 120 cups, not 250
   assert.equal(lineAmount(r, "Matcha"), null);
 });
 
@@ -286,4 +279,65 @@ test("cupsForScope respects the cart when one is given", () => {
   assert.equal(cupsForScope("all", qty, cfg, iceCart), 100);
   assert.equal(cupsForScope("all", qty, cfg, cfg.carts[2]), 130);
   assert.equal(cupsForScope("all", qty, cfg), 130); // no cart = count everything
+});
+
+
+/* --- Extras the customer counts out ------------------------------------- */
+
+test("a counted extra is charged per unit, whatever was ordered to drink", () => {
+  const r = q({ extraQuantities: { cookies: 40 } });
+  assert.equal(lineAmount(r, "Cookies"), 36); // 40 x 0.9
+  /* Independent of the 100 cups of gelato in the base order. */
+  const more = q({ quantities: { gelato: 400 }, extraQuantities: { cookies: 40 } });
+  assert.equal(lineAmount(more, "Cookies"), 36);
+});
+
+test("a counted extra does not add to the cup total", () => {
+  const r = q({ extraQuantities: { cookies: 40, cups: 80 } });
+  assert.equal(r.totalCups, 100); // the gelato only
+});
+
+test("a counted extra below its minimum is raised to it", () => {
+  assert.equal(lineAmount(q({ extraQuantities: { cups: 20 } }), "Branded cups"), 12.5); // 50
+  assert.equal(lineAmount(q({ extraQuantities: { cups: 80 } }), "Branded cups"), 20);
+});
+
+test("a minimum of one means any quantity is allowed", () => {
+  assert.equal(lineAmount(q({ extraQuantities: { cookies: 1 } }), "Cookies"), 0.9);
+  assert.equal(lineAmount(q({ extraQuantities: { cookies: 7 } }), "Cookies"), 6.3);
+});
+
+test("a counted extra left at zero is not charged at all", () => {
+  const r = q({ extraQuantities: { cookies: 0, cups: 0 } });
+  assert.equal(lineAmount(r, "Cookies"), null);
+  assert.equal(lineAmount(r, "Branded cups"), null);
+  assert.equal(r.total, 130); // service fee + gelato only
+});
+
+test("fractional and negative quantities are cleaned up", () => {
+  assert.equal(lineAmount(q({ extraQuantities: { cookies: 4.6 } }), "Cookies"), 4.5); // 5
+  assert.equal(lineAmount(q({ extraQuantities: { cookies: -5 } }), "Cookies"), null);
+});
+
+test("an unknown counted extra is ignored", () => {
+  const r = q({ extraQuantities: { nonsense: 100 } });
+  assert.equal(r.total, 130);
+});
+
+test("extraMinimum and normaliseQty agree with the counters", () => {
+  const cookies = cfg.quantityExtras[0];
+  const cups = cfg.quantityExtras[1];
+  assert.equal(extraMinimum(cookies), 1);
+  assert.equal(extraMinimum(cups), 50);
+  assert.equal(extraMinimum({ name: "no minimum given" }), 1);
+  assert.equal(normaliseQty(0, cups), 0);
+  assert.equal(normaliseQty(20, cups), 50);
+  assert.equal(normaliseQty(80, cups), 80);
+  assert.equal(normaliseQty(3, cookies), 3);
+});
+
+test("the unit only changes the wording, never the arithmetic", () => {
+  const r = q({ extraQuantities: { cookies: 40, cups: 80 } });
+  assert.match(r.lines.find((l) => l.label === "Cookies").detail, /^40 pieces/);
+  assert.match(r.lines.find((l) => l.label === "Branded cups").detail, /^80 cups/);
 });

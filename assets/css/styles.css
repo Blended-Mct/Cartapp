@@ -650,3 +650,8 @@ input[type="range"] {
 /* The quantity counter keeps − on the left and + on the right in both
    directions, which is what a hand expects wherever it reads from. */
 [dir="rtl"] .qty { flex-direction: row-reverse; }
+
+/* Extras the customer counts out sit above the tick boxes */
+.extra-counters { display: grid; gap: 8px; margin-bottom: 14px; }
+.extra-counters .menu-item + .menu-item { margin-top: 0; }
+.menu-item-min:empty { display: none; }

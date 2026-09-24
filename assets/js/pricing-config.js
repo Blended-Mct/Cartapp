@@ -170,17 +170,28 @@ const PRICING = {
       note_ar: "زيادةً على الـ٣ المشمولة مع الجيلاتو",
       pricePerCup: 0.2, appliesTo: "icecream",
     },
+  ],
+
+  /* --- Extras the customer gives a quantity for -------------------------
+     These get their own counter rather than a tick box, because the number
+     wanted is rarely the number of cups ordered.
+
+     pricePerUnit : what one costs
+     minQty       : the smallest quantity we supply. The counter will not go
+                    below it: it steps straight from 0 up to this number.
+     unit         : "piece" or "cup" — only decides the wording            */
+  quantityExtras: [
     {
       id: "cookies", name: "Cookies", name_ar: "كوكيز",
-      note: "Add a cookie to each cup",
-      note_ar: "كوكيز مع كل كوب",
-      pricePerCup: 0.9, appliesTo: "icecream",
+      note: "Freshly baked, served alongside",
+      note_ar: "مخبوزة طازجة، تُقدَّم إلى جانب الطلب",
+      pricePerUnit: 0.9, minQty: 1, unit: "piece",
     },
     {
       id: "branded_cups", name: "Branded cups", name_ar: "أكواب بشعارك",
       note: "Printed with your logo or event name",
       note_ar: "مطبوعة بشعارك أو اسم مناسبتك",
-      pricePerCup: 0.25, appliesTo: "all",
+      pricePerUnit: 0.25, minQty: 50, unit: "cup",
     },
   ],
 
