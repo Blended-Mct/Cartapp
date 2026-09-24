@@ -22,10 +22,12 @@ permissions:
   pages: write
   id-token: write
 
-# Never let two deploys race; the newer one wins.
+# Deploys queue rather than cancel. Pushing the same commit to both branches
+# starts two runs at once, and cancelling would kill whichever one is actually
+# allowed to publish — which is exactly what happened the first time.
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   test:
