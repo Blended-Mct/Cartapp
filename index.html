@@ -19,10 +19,15 @@
            onerror="this.remove()">
       <p class="tagline" data-business-tagline>Ice cream · drinks · shakes</p>
     </div>
+    <div class="header-actions">
+    <button type="button" class="lang-toggle" id="langToggle">
+      <span id="langLabel">العربية</span>
+    </button>
     <button type="button" class="theme-toggle" id="themeToggle" aria-label="Switch to dark theme">
       <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
            stroke-width="2" stroke-linecap="round" aria-hidden="true"></svg>
     </button>
+    </div>
   </div>
 </header>
 
@@ -34,17 +39,17 @@
       <img src="assets/img/blended-shopfront.webp" alt="" width="793" height="581">
     </figure>
 
-    <h1 class="page-title">What will my cart cost?</h1>
-    <p class="page-intro">
+    <h1 class="page-title" data-t="pageTitle">What will my cart cost?</h1>
+    <p class="page-intro" data-t="pageIntro">
       Tell us what you would like served and the price updates as you type.
     </p>
     <p class="minimum-banner" id="minimumBanner"></p>
 
     <!-- 1. Date -->
     <fieldset class="field">
-      <legend class="label">1. When is your event?</legend>
+      <legend class="label" data-t="step1">1. When is your event?</legend>
       <div class="input-group input-group-date">
-        <label for="eventDate"><span>Event date</span></label>
+        <label for="eventDate"><span data-t="eventDate">Event date</span></label>
         <input type="date" id="eventDate" name="eventDate" required>
         <p class="hint" id="dateHint"></p>
         <p class="error" id="errEventDate"></p>
@@ -53,15 +58,15 @@
 
     <!-- 2. Cart -->
     <fieldset class="field">
-      <legend class="label">2. Choose your cart</legend>
+      <legend class="label" data-t="step2">2. Choose your cart</legend>
       <div class="cart-options" id="cartOptions" role="radiogroup"></div>
     </fieldset>
 
     <!-- 2. Menu -->
     <fieldset class="field">
       <legend class="label">
-        3. Your menu
-        <span class="label-note">how many cups of each</span>
+        <span data-t="step3">3. Your menu</span>
+        <span class="label-note" data-t="step3Note">how many cups of each</span>
       </legend>
       <p class="field-note" id="menuMinimumNote"></p>
       <p class="choose-later" id="chooseLaterNote"></p>
@@ -71,16 +76,16 @@
 
     <!-- 3. Event -->
     <fieldset class="field">
-      <legend class="label">4. Where and how long</legend>
+      <legend class="label" data-t="step4">4. Where and how long</legend>
       <div class="grid-2">
         <div class="input-group">
-          <label for="location"><span>Where is it?</span></label>
+          <label for="location"><span data-t="whereIsIt">Where is it?</span></label>
           <select id="location" name="location"></select>
           <p class="hint" id="locationHint"></p>
         </div>
 
         <div class="input-group">
-          <label for="hours"><span>Service hours</span>
+          <label for="hours"><span data-t="serviceHours">Service hours</span>
             <span class="value-badge" id="hoursValue">2 h</span></label>
           <input type="range" id="hours" name="hours" min="2" max="10" step="1" value="2">
           <p class="hint" id="hoursHint"></p>
@@ -90,65 +95,65 @@
 
     <!-- 4. Extras -->
     <fieldset class="field">
-      <legend class="label">5. Extras <span class="label-note">optional</span></legend>
+      <legend class="label"><span data-t="step5">5. Extras</span> <span class="label-note" data-t="optional">optional</span></legend>
       <div class="addons" id="extras"></div>
     </fieldset>
 
     <!-- 5. Send it -->
     <fieldset class="field" id="enquiryFields">
-      <legend class="label">6. Send us your enquiry</legend>
-      <p class="field-note">
+      <legend class="label" data-t="step6">6. Send us your enquiry</legend>
+      <p class="field-note" data-t="enquiryIntro">
         We will come back to you with a confirmed quote. Nothing is booked yet.
       </p>
 
       <div class="grid-2">
         <div class="input-group">
-          <label for="custName"><span>Your name</span></label>
+          <label for="custName"><span data-t="yourName">Your name</span></label>
           <input type="text" id="custName" name="custName" autocomplete="name"
-                 placeholder="Full name">
+                 data-t-placeholder="fullName" placeholder="Full name">
           <p class="error" id="errName"></p>
         </div>
 
         <div class="input-group">
-          <label for="eventType"><span>Kind of event</span></label>
+          <label for="eventType"><span data-t="kindOfEvent">Kind of event</span></label>
           <select id="eventType" name="eventType"></select>
           <p class="error" id="errEventTypeId"></p>
         </div>
 
         <div class="input-group" id="companyGroup" hidden>
-          <label for="companyName"><span>Company name</span></label>
+          <label for="companyName"><span data-t="companyName">Company name</span></label>
           <input type="text" id="companyName" name="companyName"
-                 autocomplete="organization" placeholder="Company or organisation">
+                 autocomplete="organization" data-t-placeholder="companyPlaceholder" placeholder="Company or organisation">
           <p class="error" id="errCompanyName"></p>
         </div>
 
         <div class="input-group">
-          <label for="phone"><span>Phone / WhatsApp</span></label>
+          <label for="phone"><span data-t="phone">Phone / WhatsApp</span></label>
           <input type="tel" id="phone" name="phone" autocomplete="tel"
-                 inputmode="tel" placeholder="9xxx xxxx">
+                 inputmode="tel" data-t-placeholder="phonePlaceholder" placeholder="9xxx xxxx">
           <p class="error" id="errPhone"></p>
         </div>
 
         <div class="input-group">
-          <label for="custEmail"><span>Email</span>
+          <label for="custEmail"><span data-t="email">Email</span>
             <span class="label-note">optional</span></label>
           <input type="email" id="custEmail" name="custEmail"
-                 autocomplete="email" placeholder="you@example.com">
+                 autocomplete="email" data-t-placeholder="emailPlaceholder" placeholder="you@example.com">
           <p class="error" id="errEmail"></p>
         </div>
 
       </div>
 
       <div class="input-group input-group-wide">
-        <label for="notes"><span>Anything else we should know?</span>
+        <label for="notes"><span data-t="notes">Anything else we should know?</span>
           <span class="label-note">optional</span></label>
         <textarea id="notes" name="notes" rows="3"
-                  placeholder="Venue, timings, flavours, anything at all"></textarea>
+                  data-t-placeholder="notesPlaceholder" placeholder="Venue, timings, flavours, anything at all"></textarea>
       </div>
 
       <p class="error" id="errCups"></p>
 
-      <button type="submit" class="btn btn-primary btn-send" id="sendBtn">
+      <button type="submit" class="btn btn-primary btn-send" id="sendBtn" data-t="send">
         Send my enquiry
       </button>
       <p class="send-status" id="sendStatus" role="status"></p>
@@ -156,20 +161,20 @@
 
     <!-- Shown in place of the fields once the enquiry is away -->
     <div class="sent-panel" id="sentPanel" hidden>
-      <p class="sent-title">Thank you — your enquiry is on its way.</p>
+      <p class="sent-title" data-t="sentTitle">Thank you — your enquiry is on its way.</p>
       <p class="sent-body" id="sentBody"></p>
-      <button type="button" class="btn btn-ghost" id="againBtn">
+      <button type="button" class="btn btn-ghost" id="againBtn" data-t="startAnother">
         Start another enquiry
       </button>
     </div>
 
-    <button type="button" class="btn btn-ghost" id="resetBtn">Start over</button>
+    <button type="button" class="btn btn-ghost" id="resetBtn" data-t="startOver">Start over</button>
   </form>
 
   <!-- ------------------------------------------------------- the estimate -->
   <aside class="panel quote" id="quote" aria-live="polite">
     <div class="quote-head">
-      <p class="quote-eyebrow">Your estimate</p>
+      <p class="quote-eyebrow" data-t="yourEstimate">Your estimate</p>
       <p class="quote-total" id="quoteTotal">—</p>
       <p class="quote-sub" id="quoteSub"></p>
     </div>
@@ -177,14 +182,14 @@
     <div class="quote-warnings" id="quoteWarnings"></div>
 
     <table class="breakdown">
-      <caption class="sr-only">Cost breakdown</caption>
+      <caption class="sr-only" data-t="breakdown">Cost breakdown</caption>
       <tbody id="breakdownBody"></tbody>
       <tfoot id="breakdownFoot"></tfoot>
     </table>
 
     <p class="disclaimer" data-business-disclaimer></p>
 
-    <button type="button" class="btn btn-primary" id="printBtn">Print / save as PDF</button>
+    <button type="button" class="btn btn-primary" id="printBtn" data-t="print">Print / save as PDF</button>
   </aside>
 
 </main>
@@ -193,10 +198,11 @@
 <div class="mobile-bar" id="mobileBar" hidden>
   <div class="mobile-bar-inner">
     <div>
-      <p class="mobile-bar-label">Estimated total</p>
+      <p class="mobile-bar-label" data-t="yourEstimate">Estimated total</p>
       <p class="mobile-bar-total" id="mobileBarTotal">—</p>
     </div>
-    <button type="button" class="btn btn-primary mobile-bar-btn" id="mobileBarBtn">
+    <button type="button" class="btn btn-primary mobile-bar-btn" id="mobileBarBtn"
+            data-t="breakdown">
       See breakdown
     </button>
   </div>
@@ -210,11 +216,11 @@
 
 <footer class="site-footer">
   <p class="wrap">
-    <span data-business-name>Blended</span> — prices shown are an estimate,
-    not a binding quotation. Details you send reach us by email only.
+    <span id="footerText"></span>
   </p>
 </footer>
 
+<script src="assets/js/i18n.js"></script>
 <script src="assets/js/pricing-config.js"></script>
 <script src="assets/js/calculator.js"></script>
 <script src="assets/js/enquiry.js"></script>

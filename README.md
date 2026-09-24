@@ -255,13 +255,50 @@ assets/css/font.css            the display font, embedded
 assets/fonts/                  the font file and its licence
 assets/img/blended-logo.png    the wordmark, shown in the header
 assets/img/blended-shopfront.webp  the illustration at the top of the form
+assets/js/i18n.js              every phrase, in English and Arabic
 assets/js/pricing-config.js    ← your prices, the only file you need to edit
 assets/js/calculator.js        the pricing maths
 assets/js/enquiry.js           validating the form and writing the email
 assets/js/app.js               builds the form and keeps the estimate live
 test/calculator.test.js        tests for the pricing rules
 test/enquiry.test.js           tests for the enquiry form
+test/i18n.test.js              tests that nothing is left untranslated
 ```
+
+## The two languages
+
+The page opens in English with an **العربية** button beside the theme switch.
+Pressing it swaps the whole page to Arabic and flips the layout right to left.
+The choice is remembered on that device, and everything already filled in — the
+date, cups, contact details — is kept; only the words change.
+
+Wording lives in two places:
+
+- **[`assets/js/i18n.js`](assets/js/i18n.js)** holds every fixed phrase on the
+  page, English beside Arabic. Correct a translation there and nothing else
+  needs touching.
+- **`pricing-config.js`** names the carts, menu items, extras and areas, each
+  with an `_ar` twin (`name` / `name_ar`, `note` / `note_ar`), because those
+  belong with their prices.
+
+Anything with no Arabic falls back to the English rather than showing a blank,
+and `npm test` fails if a name, note or phrase is missing its Arabic — that is
+how the untranslated disclaimer was caught.
+
+Numbers stay in Western digits (`120`, `30.000`) on the Arabic page, which is
+how prices are written in Oman. For Arabic-Indic numerals (`١٢٠`) set
+`locale_ar: "ar-OM"` in the config.
+
+The enquiry email is **always in English**, whichever language the customer
+used, since you are the one reading it.
+
+### Adding a third language
+
+1. Add a column to `STRINGS` in `i18n.js` with the same keys.
+2. Add it to `LANGUAGES`.
+3. Add `name_xx` / `note_xx` fields in `pricing-config.js`.
+
+The switch currently toggles between two; more than two would want a drop-down.
 
 ## Changing the look
 

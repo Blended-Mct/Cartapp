@@ -5,6 +5,14 @@
    they want, and everything else follows from that.
    ========================================================================== */
 
+/* Wording comes from i18n.js: a global in the browser, a require under Node.
+   The name is unique to this file — these are plain scripts sharing one global
+   scope, where a repeated `const` stops the second file dead. */
+const CALC_I18N =
+  typeof module !== "undefined" && module.exports
+    ? require("./i18n.js")
+    : { t: window.t, localised: window.localised };
+
 /* Rounds to a number of decimal places. Rials use 3 (baisa), most
    currencies use 2 — set `decimals` in pricing-config.js. */
 function roundTo(n, decimals) {
@@ -69,7 +77,10 @@ function cupsForScope(scope, quantities, config, cart) {
 
    Returns every line the customer sees, plus warnings.
 --------------------------------------------------------------------------- */
-function calculateQuote(input, config) {
+function calculateQuote(input, config, lang = "en") {
+  const t = (key, vars) => CALC_I18N.t(key, lang, vars);
+  const name = (item) => CALC_I18N.localised(item, "name", lang);
+
   const cart = config.carts.find((c) => c.id === input.cartId) || config.carts[0];
   const round = (n) => roundTo(n, config.decimals);
 
@@ -86,8 +97,11 @@ function calculateQuote(input, config) {
 
   /* 1. The service fee every booking starts with ------------------------ */
   lines.push({
-    label: config.serviceFeeLabel || "Cart service fee",
-    detail: `${cart.name}, ${config.duration.includedHours} hours of service`,
+    label: CALC_I18N.localised(config, "serviceFeeLabel", lang) || "Cart service fee",
+    detail: t("serviceFeeDetail", {
+      cart: name(cart),
+      hours: config.duration.includedHours,
+    }),
     amount: config.serviceFee,
   });
 
@@ -101,8 +115,8 @@ function calculateQuote(input, config) {
 
     totalCups += cups;
     lines.push({
-      label: item.name,
-      detail: `${cups} cups × ${item.pricePerCup}`,
+      label: name(item),
+      detail: t("cupsTimes", { cups, price: item.pricePerCup }),
       amount: cups * item.pricePerCup,
     });
   });
@@ -117,12 +131,11 @@ function calculateQuote(input, config) {
     if (scopeCups <= 0) return;
 
     const billed = extra.minCups ? Math.max(scopeCups, extra.minCups) : scopeCups;
-    const detail =
-      billed > scopeCups
-        ? `${scopeCups} cups, ${billed} cup minimum × ${extra.pricePerCup}`
-        : `${billed} cups × ${extra.pricePerCup}`;
-
-    lines.push({ label: extra.name, detail, amount: billed * extra.pricePerCup });
+    lines.push({
+      label: name(extra),
+      detail: t("cupsTimes", { cups: billed, price: extra.pricePerCup }),
+      amount: billed * extra.pricePerCup,
+    });
   });
 
   /* 4. Extras charged once ------------------------------------------------ */
@@ -130,7 +143,11 @@ function calculateQuote(input, config) {
     .map((id) => config.flatExtras.find((e) => e.id === id))
     .filter(Boolean)
     .forEach((extra) => {
-      lines.push({ label: extra.name, detail: extra.note || "", amount: extra.price });
+      lines.push({
+        label: name(extra),
+        detail: CALC_I18N.localised(extra, "note", lang),
+        amount: extra.price,
+      });
     });
 
   /* 5. Location ----------------------------------------------------------- */
@@ -138,8 +155,8 @@ function calculateQuote(input, config) {
     config.locations.find((l) => l.id === input.locationId) || config.locations[0];
   if (location.charge > 0) {
     lines.push({
-      label: `Travel to ${location.name}`,
-      detail: "Outside Muscat",
+      label: t("travelTo", { place: name(location) }),
+      detail: t("outsideBase", { place: name(config.locations[0]) }),
       amount: location.charge,
     });
   }
@@ -153,8 +170,11 @@ function calculateQuote(input, config) {
   const extraHours = Math.max(0, hours - config.duration.includedHours);
   if (extraHours > 0) {
     lines.push({
-      label: "Additional hours",
-      detail: `${extraHours} h × ${config.duration.extraHourRate}`,
+      label: t("additionalHours"),
+      detail: t("hoursTimes", {
+        hours: extraHours,
+        rate: config.duration.extraHourRate,
+      }),
       amount: extraHours * config.duration.extraHourRate,
     });
   }
@@ -165,7 +185,7 @@ function calculateQuote(input, config) {
   const tax =
     config.tax.percent > 0
       ? {
-          label: `${config.tax.label} (${config.tax.percent}%)`,
+          label: `${CALC_I18N.localised(config.tax, "label", lang)} (${config.tax.percent}%)`,
           amount: round(subtotal * (config.tax.percent / 100)),
         }
       : null;
@@ -175,7 +195,7 @@ function calculateQuote(input, config) {
   const deposit =
     config.deposit.percent > 0
       ? {
-          label: `${config.deposit.label} (${config.deposit.percent}%)`,
+          label: `${CALC_I18N.localised(config.deposit, "label", lang)} (${config.deposit.percent}%)`,
           amount: round(total * (config.deposit.percent / 100)),
         }
       : null;
@@ -185,7 +205,7 @@ function calculateQuote(input, config) {
      order we cannot price is an empty one. */
   const hasOrder = totalCups > 0;
   if (!hasOrder) {
-    warnings.push("Choose how many cups you would like to see a price.");
+    warnings.push(t("chooseCupsLong"));
   }
 
   return {

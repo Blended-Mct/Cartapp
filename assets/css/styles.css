@@ -224,7 +224,7 @@ body {
 }
 
 .value-badge {
-  margin-left: auto;
+  margin-inline-start: auto;
   padding: 2px 9px;
   border-radius: 999px;
   background: var(--accent-soft);
@@ -404,7 +404,7 @@ input[type="range"] {
 .breakdown td { padding: 8px 0; vertical-align: top; }
 .breakdown tbody tr + tr td { border-top: 1px dashed var(--border); }
 .breakdown .cell-amount {
-  text-align: right; white-space: nowrap; padding-left: 12px;
+  text-align: end; white-space: nowrap; padding-inline-start: 12px;
   font-variant-numeric: tabular-nums; font-weight: 550;
 }
 .breakdown .cell-detail { display: block; font-size: .78rem; color: var(--text-muted); }
@@ -585,8 +585,9 @@ input[type="range"] {
 .choose-later {
   margin: 0 0 16px;
   padding: 10px 12px;
-  border-left: 3px solid var(--leaf);
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  border-inline-start: 3px solid var(--leaf);
+  border-start-end-radius: var(--radius-sm);
+  border-end-end-radius: var(--radius-sm);
   background: var(--surface-2);
   color: var(--text-muted);
   font-size: .82rem;
@@ -594,3 +595,58 @@ input[type="range"] {
 
 /* The date stands alone at the top, so it does not need full width */
 .input-group-date { max-width: 320px; }
+
+
+/* --- Language switch --------------------------------------------------- */
+.header-actions { display: flex; align-items: center; gap: 8px; flex: none; }
+
+.lang-toggle {
+  height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: .85rem;
+  font-weight: 650;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.lang-toggle:hover { border-color: var(--accent); color: var(--accent); }
+.lang-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* --- Reading right to left ---------------------------------------------
+   The layout is built from flex and grid, which mirror themselves, so only
+   the few places that assume a direction need saying again. */
+[dir="rtl"] .menu-item-min,
+[dir="rtl"] .value-badge { font-variant-numeric: normal; }
+
+/* Latin digits inside Arabic text still read left to right; isolating the
+   numeric runs keeps "120 × 1.5" from being shuffled. */
+[dir="rtl"] .cell-amount,
+[dir="rtl"] .menu-item-price,
+[dir="rtl"] .addon-price,
+[dir="rtl"] .cart-option-from,
+[dir="rtl"] .menu-item-min,
+[dir="rtl"] .quote-total,
+[dir="rtl"] .mobile-bar-total,
+[dir="rtl"] .value-badge,
+[dir="rtl"] .cell-detail {
+  unicode-bidi: isolate;
+}
+
+/* The date and range inputs stay left to right: their controls are built
+   that way and a mirrored one is harder to use, not easier. */
+[dir="rtl"] input[type="date"],
+[dir="rtl"] input[type="range"],
+[dir="rtl"] input[type="tel"],
+[dir="rtl"] input[type="email"] {
+  direction: ltr;
+  text-align: start;
+}
+[dir="rtl"] input[type="date"] { text-align: end; }
+
+/* The quantity counter keeps − on the left and + on the right in both
+   directions, which is what a hand expects wherever it reads from. */
+[dir="rtl"] .qty { flex-direction: row-reverse; }

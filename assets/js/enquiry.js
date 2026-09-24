@@ -3,6 +3,14 @@
    Pure functions, no DOM, so they can be tested on their own.
    ========================================================================== */
 
+/* Wording comes from i18n.js: a global in the browser, a require under Node.
+   The name is unique to this file — these are plain scripts sharing one global
+   scope, where a repeated `const` stops the second file dead. */
+const ENQUIRY_I18N =
+  typeof module !== "undefined" && module.exports
+    ? require("./i18n.js")
+    : { t: window.t, localised: window.localised };
+
 /* Today, as a plain YYYY-MM-DD string in the visitor's own timezone — so
    "today" means their today, not UTC's. */
 function isoDate(date) {
@@ -23,7 +31,8 @@ function eventTypeById(id, config) {
    Returns { ok, errors } where errors is keyed by field, so each message can
    be shown against the input it belongs to.
 --------------------------------------------------------------------------- */
-function validateEnquiry(details, quote, config, today = new Date()) {
+function validateEnquiry(details, quote, config, today = new Date(), lang = "en") {
+  const t = (key) => ENQUIRY_I18N.t(key, lang);
   const errors = {};
   const name = (details.name || "").trim();
   const phone = (details.phone || "").trim();
@@ -34,39 +43,39 @@ function validateEnquiry(details, quote, config, today = new Date()) {
   /* The date decides whether we are free at all, so it is asked for first and
      is not optional. Comparing the strings is safe: YYYY-MM-DD sorts by date. */
   if (!eventDate) {
-    errors.eventDate = "Please tell us the date of your event.";
+    errors.eventDate = t("errDate");
   } else if (!/^\d{4}-\d{2}-\d{2}$/.test(eventDate)) {
-    errors.eventDate = "Please choose a date.";
+    errors.eventDate = t("errDateFormat");
   } else if (eventDate < isoDate(today)) {
-    errors.eventDate = "That date has passed — please choose a future date.";
+    errors.eventDate = t("errDatePast");
   }
 
   if (name.length < 2) {
-    errors.name = "Please tell us your name.";
+    errors.name = t("errName");
   }
 
   if (!type) {
-    errors.eventTypeId = "Please choose the kind of event.";
+    errors.eventTypeId = t("errEventType");
   } else if (type.needsCompanyName && (details.companyName || "").trim().length < 2) {
-    errors.companyName = "Please tell us the company name.";
+    errors.companyName = t("errCompany");
   }
 
   /* Loose on purpose: Omani numbers are written many ways, and a form that
      argues about spacing loses enquiries. We only insist on enough digits. */
   const digits = phone.replace(/\D/g, "");
   if (digits.length < 8) {
-    errors.phone = "Please leave a phone number we can reach you on.";
+    errors.phone = t("errPhone");
   }
 
   /* Email is optional, but if given it should look like one. */
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    errors.email = "That email address does not look right.";
+    errors.email = t("errEmail");
   }
 
   /* The cup counters hold every quantity at or above its minimum, so the only
      order that cannot be sent is an empty one. */
   if (!quote.hasOrder) {
-    errors.cups = "Please choose how many cups you would like.";
+    errors.cups = t("errCups");
   }
 
   return { ok: Object.keys(errors).length === 0, errors };

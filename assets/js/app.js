@@ -7,17 +7,31 @@
   const cfg = PRICING;
   const $ = (id) => document.getElementById(id);
 
+  /* The language in play. A visitor's choice is remembered on their device. */
+  let lang = cfg.defaultLanguage || "en";
+  const say = (key, vars) => t(key, lang, vars);
+  const nameOf = (item) => localised(item, "name", lang);
+  const noteOf = (item) => localised(item, "note", lang);
+
   /* Rials are written to 3 decimals (baisa); `decimals` in the config sets it. */
   const dp = Number.isInteger(cfg.decimals) ? cfg.decimals : 2;
-  const money = new Intl.NumberFormat(cfg.locale, {
-    style: "currency",
-    currency: cfg.currency,
-    minimumFractionDigits: dp,
-    maximumFractionDigits: dp,
-  });
+  let money = null;
+  function buildFormatter() {
+    money = new Intl.NumberFormat(localised(cfg, "locale", lang) || cfg.locale, {
+      style: "currency",
+      currency: cfg.currency,
+      minimumFractionDigits: dp,
+      maximumFractionDigits: dp,
+    });
+  }
   const fmt = (n) => money.format(n);
 
-  const GROUP_NAMES = { icecream: "Ice cream", drinks: "Drinks" };
+  const GROUP_NAMES = {
+    en: { icecream: "Ice cream", drinks: "Drinks" },
+    ar: { icecream: "آيس كريم", drinks: "مشروبات" },
+  };
+  const groupName = (group) =>
+    (GROUP_NAMES[lang] || GROUP_NAMES.en)[group] || group;
   /* How much the +/− buttons move once an item is in the order. */
   const STEP = 10;
 
@@ -67,47 +81,56 @@
       n.textContent = cfg.business.name;
     });
     document.querySelectorAll("[data-business-tagline]").forEach((n) => {
-      n.textContent = cfg.business.tagline;
+      n.textContent = localised(cfg.business, "tagline", lang);
     });
     document.querySelectorAll("[data-business-disclaimer]").forEach((n) => {
-      n.textContent = cfg.business.disclaimer;
+      n.textContent = localised(cfg.business, "disclaimer", lang);
     });
+    $("footerText").textContent = say("footer", { name: cfg.business.name });
   }
 
   /* --- The order minimum, said once at the top and once by the menu ---- */
   function applyMinimumText() {
-    el.minimumBanner.textContent =
-      `Every booking starts at ${fmt(cfg.serviceFee)}, which covers ` +
-      `${cfg.duration.includedHours} hours of service. ` +
-      `We serve from ${cfg.minimumCups} cups of any item.`;
+    el.minimumBanner.textContent = say("startsAt", {
+      fee: fmt(cfg.serviceFee),
+      hours: cfg.duration.includedHours,
+      cups: cfg.minimumCups,
+    });
     /* Name any item whose own minimum is higher, so it is no surprise. */
     const higher = cfg.menu
       .filter((item) => Number.isFinite(item.minCups) && item.minCups > cfg.minimumCups)
-      .map((item) => `${item.name.toLowerCase()} from ${item.minCups}`);
-    el.menuMinimumNote.textContent =
-      `Each item is served from ${cfg.minimumCups} cups up` +
-      (higher.length ? `, ${higher.join(", ")}` : "") +
-      `. Add as many kinds as you like.`;
-    el.chooseLaterNote.textContent = (cfg.messages && cfg.messages.chooseLater) || "";
+      .map((item) =>
+        say("servedFromItem", { name: nameOf(item), cups: item.minCups })
+      );
+    el.menuMinimumNote.textContent = say("servedFrom", {
+      cups: cfg.minimumCups,
+      higher: higher.length ? `, ${higher.join(", ")}` : "",
+    });
+    el.chooseLaterNote.textContent = localised(cfg.messages, "chooseLater", lang);
   }
 
   /* --- Cart chooser ---------------------------------------------------- */
   function renderCarts() {
     el.cartOptions.innerHTML = "";
-    cfg.carts.forEach((cart, i) => {
+    cfg.carts.forEach((cart) => {
+      const chosen = cart.id === selectedCartId;
       const label = document.createElement("label");
-      label.className = "cart-option" + (i === 0 ? " is-selected" : "");
+      label.className = "cart-option" + (chosen ? " is-selected" : "");
       label.innerHTML = `
-        <input type="radio" name="cart" value="${cart.id}" ${i === 0 ? "checked" : ""}>
+        <input type="radio" name="cart" value="${cart.id}" ${chosen ? "checked" : ""}>
         <span class="cart-option-emoji" aria-hidden="true">${cart.emoji || "🛒"}</span>
         <strong class="cart-option-name"></strong>
         <span class="cart-option-blurb"></span>
-        <span class="cart-option-from">from ${fmt(cfg.serviceFee)}</span>`;
-      label.querySelector(".cart-option-name").textContent = cart.name;
-      label.querySelector(".cart-option-blurb").textContent = cart.blurb;
+        <span class="cart-option-from">${say("fromCups", { cups: cfg.minimumCups })}</span>`;
+      label.querySelector(".cart-option-name").textContent = nameOf(cart);
+      label.querySelector(".cart-option-blurb").textContent =
+        localised(cart, "blurb", lang);
       el.cartOptions.appendChild(label);
     });
+  }
 
+  /* Wired once, not on every redraw. */
+  function wireCartChooser() {
     el.cartOptions.addEventListener("change", (e) => {
       if (e.target.name !== "cart") return;
       selectedCartId = e.target.value;
@@ -137,7 +160,7 @@
       if (cart.serves.length > 1) {
         const heading = document.createElement("p");
         heading.className = "menu-group";
-        heading.textContent = GROUP_NAMES[group] || group;
+        heading.textContent = groupName(group);
         el.menu.appendChild(heading);
       }
 
@@ -149,21 +172,21 @@
           <div class="menu-item-text">
             <span class="menu-item-name"></span>
             <span class="menu-item-note"></span>
-            <span class="menu-item-price">${fmt(item.pricePerCup)} per cup</span>
-            <span class="menu-item-min">from ${min} cups</span>
+            <span class="menu-item-price">${say("perCup", { amount: fmt(item.pricePerCup) })}</span>
+            <span class="menu-item-min">${say("fromCups", { cups: min })}</span>
           </div>
           <div class="qty">
             <button type="button" class="qty-btn" data-step="-${STEP}"
-                    aria-label="Fewer cups of ${item.name}">−</button>
+                    aria-label="${say("fewerCups", { name: nameOf(item) })}">−</button>
             <input type="number" class="qty-input" inputmode="numeric"
                    min="0" max="5000" step="${STEP}" value="${quantities[item.id] || 0}"
                    data-item="${item.id}" data-min="${min}"
-                   aria-label="Cups of ${item.name}">
+                   aria-label="${say("cupsOf", { name: nameOf(item) })}">
             <button type="button" class="qty-btn" data-step="${STEP}"
-                    aria-label="More cups of ${item.name}">+</button>
+                    aria-label="${say("moreCups", { name: nameOf(item) })}">+</button>
           </div>`;
-        row.querySelector(".menu-item-name").textContent = item.name;
-        row.querySelector(".menu-item-note").textContent = item.note || "";
+        row.querySelector(".menu-item-name").textContent = nameOf(item);
+        row.querySelector(".menu-item-note").textContent = noteOf(item);
         el.menu.appendChild(row);
       });
     });
@@ -218,7 +241,11 @@
     );
 
     cupExtras
-      .map((e) => ({ ...e, priceLabel: `${fmt(e.pricePerCup)} per cup`, kind: "cup" }))
+      .map((e) => ({
+        ...e,
+        priceLabel: say("perCup", { amount: fmt(e.pricePerCup) }),
+        kind: "cup",
+      }))
       .concat(
         cfg.flatExtras.map((e) => ({ ...e, priceLabel: fmt(e.price), kind: "flat" }))
       )
@@ -234,8 +261,8 @@
             <span class="addon-note"></span>
             <span class="addon-price">${extra.priceLabel}</span>
           </span>`;
-        label.querySelector(".addon-name").textContent = extra.name;
-        label.querySelector(".addon-note").textContent = extra.note || "";
+        label.querySelector(".addon-name").textContent = nameOf(extra);
+        label.querySelector(".addon-note").textContent = noteOf(extra);
         el.extras.appendChild(label);
       });
   }
@@ -249,14 +276,18 @@
 
   /* --- Locations -------------------------------------------------------- */
   function renderLocations() {
+    const chosen = el.location.value;
     el.location.innerHTML = "";
     cfg.locations.forEach((loc) => {
       const option = document.createElement("option");
       option.value = loc.id;
       option.textContent =
-        loc.charge > 0 ? `${loc.name} (+${fmt(loc.charge)})` : loc.name;
+        loc.charge > 0
+          ? `${nameOf(loc)} (+${fmt(loc.charge)})`
+          : nameOf(loc);
       el.location.appendChild(option);
     });
+    if (chosen) el.location.value = chosen;
   }
 
   /* --- The event date --------------------------------------------------- */
@@ -270,35 +301,40 @@
   function renderDateHint() {
     const value = el.eventDate.value;
     if (!value) {
-      el.dateHint.textContent = "We need the date before we can hold a cart for you.";
+      el.dateHint.textContent = say("dateNeeded");
       return;
     }
     const [y, m, d] = value.split("-").map(Number);
     const date = new Date(y, m - 1, d);
     el.dateHint.textContent = Number.isNaN(date.getTime())
       ? ""
-      : date.toLocaleDateString(cfg.locale, {
+      : date.toLocaleDateString(localised(cfg, "locale", lang) || cfg.locale, {
           weekday: "long", day: "numeric", month: "long", year: "numeric",
         });
   }
 
   /* --- Event types ------------------------------------------------------ */
   function renderEventTypes() {
+    const chosen = el.eventType.value;
     el.eventType.innerHTML = "";
     const placeholder = document.createElement("option");
     placeholder.value = "";
-    placeholder.textContent = "Please choose…";
+    placeholder.textContent = say("pleaseChoose");
     el.eventType.appendChild(placeholder);
 
     cfg.enquiry.eventTypes.forEach((type) => {
       const option = document.createElement("option");
       option.value = type.id;
-      option.textContent = type.name;
+      option.textContent = nameOf(type);
       el.eventType.appendChild(option);
     });
+    if (chosen) el.eventType.value = chosen;
 
-    el.eventType.addEventListener("change", syncCompanyField);
     syncCompanyField();
+  }
+
+  function wireEventTypes() {
+    el.eventType.addEventListener("change", syncCompanyField);
   }
 
   /* The company name is only asked for when the event type needs it. */
@@ -355,9 +391,13 @@
     el.total.textContent = showPrice ? fmt(q.total) : "—";
     el.mobileBarTotal.textContent = showPrice ? fmt(q.total) : "—";
     el.sub.textContent = showPrice
-      ? `${q.cart.name} · ${q.totalCups} cups · ${q.hours} h · ` +
-        `about ${fmt(q.perCup)} per cup`
-      : "Choose your cups to see a price.";
+      ? say("summary", {
+          cart: nameOf(q.cart),
+          cups: q.totalCups,
+          hours: q.hours,
+          perCup: fmt(q.perCup),
+        })
+      : say("chooseCups");
 
     el.body.innerHTML = "";
     el.foot.innerHTML = "";
@@ -365,10 +405,10 @@
     if (showPrice) {
       q.lines.forEach((l) => el.body.appendChild(row(l.label, l.detail, fmt(l.amount))));
       if (q.tax) {
-        el.foot.appendChild(row("Subtotal", "", fmt(q.subtotal)));
+        el.foot.appendChild(row(say("subtotal"), "", fmt(q.subtotal)));
         el.foot.appendChild(row(q.tax.label, "", fmt(q.tax.amount)));
       }
-      el.foot.appendChild(row("Total estimate", "", fmt(q.total), "row-total"));
+      el.foot.appendChild(row(say("totalEstimate"), "", fmt(q.total), "row-total"));
       if (q.deposit) {
         el.foot.appendChild(row(q.deposit.label, "", fmt(q.deposit.amount), "row-deposit"));
       }
@@ -390,18 +430,25 @@
     const extra = q.hours - included;
     el.hoursHint.textContent =
       extra > 0
-        ? `${extra} ${extra === 1 ? "hour" : "hours"} beyond the ${included} ` +
-          `included, at ${fmt(cfg.duration.extraHourRate)} each.`
-        : `${included} hours are included in the service fee.`;
+        ? say("hoursExtra", {
+            count: extra,
+            unit: say(extra === 1 ? "hour" : "hours"),
+            included,
+            rate: fmt(cfg.duration.extraHourRate),
+          })
+        : say("hoursIncluded", { hours: included });
 
     el.locationHint.textContent =
       q.location.charge > 0
-        ? `${q.location.name} carries a ${fmt(q.location.charge)} travel charge.`
-        : `No travel charge within ${q.location.name}.`;
+        ? say("travelCharge", {
+            place: nameOf(q.location),
+            amount: fmt(q.location.charge),
+          })
+        : say("noTravelCharge", { place: nameOf(q.location) });
 
     el.cupsTotal.textContent = q.hasOrder
-      ? `${q.totalCups} cups in total.`
-      : "Nothing chosen yet.";
+      ? say("cupsTotal", { cups: q.totalCups })
+      : say("nothingChosen");
   }
 
   /* Highlight the rows the customer has actually ordered. */
@@ -414,7 +461,7 @@
 
   /* --- The one function that runs on every change ---------------------- */
   function update() {
-    const q = calculateQuote(readInput(), cfg);
+    const q = calculateQuote(readInput(), cfg, lang);
     markChosenItems();
     renderHints(q);
     renderQuote(q);
@@ -440,13 +487,15 @@
 
   function refreshErrors() {
     if (!hasTriedToSend) return;
-    const quote = calculateQuote(readInput(), cfg);
-    showErrors(validateEnquiry(readDetails(), quote, cfg).errors);
+    const quote = calculateQuote(readInput(), cfg, lang);
+    showErrors(
+      validateEnquiry(readDetails(), quote, cfg, new Date(), lang).errors
+    );
   }
 
   function setSending(sending) {
     el.sendBtn.disabled = sending;
-    el.sendBtn.textContent = sending ? "Sending…" : "Send my enquiry";
+    el.sendBtn.textContent = say(sending ? "sending" : "send");
   }
 
   /* When a send cannot go through, the customer is handed their own email
@@ -459,7 +508,7 @@
     text.textContent = message + " ";
     const link = document.createElement("a");
     link.href = enquiryMailto(details, quote, cfg);
-    link.textContent = "Send it by email instead";
+    link.textContent = say("sendByEmail");
     el.sendStatus.append(text, link);
   }
 
@@ -467,19 +516,19 @@
     el.enquiryFields.hidden = true;
     el.sentPanel.hidden = false;
     const name = (details.name || "").trim().split(/\s+/)[0];
-    const later = (cfg.messages && cfg.messages.chooseLater) || "";
-    el.sentBody.textContent =
-      `${name ? name + ", we" : "We"} have your enquiry and will be in touch on ` +
-      `${details.phone.trim()} with a confirmed quote. ` +
-      (later ? later + " " : "") +
-      `Your estimate is still on screen — print it if you would like a copy.`;
+    const later = localised(cfg.messages, "chooseLater", lang);
+    el.sentBody.textContent = say("sentBody", {
+      name: name ? say("namePrefix", { name }) : "",
+      phone: details.phone.trim(),
+      later: later ? `${later} ` : "",
+    });
     el.sentPanel.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
   async function submitEnquiry() {
-    const quote = calculateQuote(readInput(), cfg);
+    const quote = calculateQuote(readInput(), cfg, lang);
     const details = readDetails();
-    const { ok, errors } = validateEnquiry(details, quote, cfg);
+    const { ok, errors } = validateEnquiry(details, quote, cfg, new Date(), lang);
 
     hasTriedToSend = true;
     showErrors(errors);
@@ -500,26 +549,28 @@
 
     /* In mailto mode the customer's own email app does the sending. */
     if (cfg.enquiry.mode === "mailto") {
-      window.location.href = enquiryMailto(details, quote, cfg);
+      window.location.href = enquiryMailto(
+        details, calculateQuote(readInput(), cfg, "en"), cfg
+      );
       showSent(details);
       return;
     }
 
     const endpoint = enquiryEndpoint(cfg);
     if (!endpoint) {
-      offerMailtoFallback(details, quote, "This form is not set up to send yet.");
+      offerMailtoFallback(details, quote, say("notSetUp"));
       return;
     }
 
     setSending(true);
     try {
-      await postToRelay(endpoint, buildRelayFields(details, quote, cfg));
+      /* The email is always in English: it is read by the business, whatever
+         language the customer used on the page. */
+      const englishQuote = calculateQuote(readInput(), cfg, "en");
+      await postToRelay(endpoint, buildRelayFields(details, englishQuote, cfg));
       showSent(details);
     } catch (err) {
-      offerMailtoFallback(
-        details, quote,
-        "We could not confirm that was sent — sorry."
-      );
+      offerMailtoFallback(details, quote, say("sendFailed"));
     } finally {
       setSending(false);
     }
@@ -595,6 +646,51 @@
     });
   }
 
+  /* --- Language ---------------------------------------------------------
+     Switching redraws everything, because nearly every string on the page
+     comes from either the translation table or the pricing config. What the
+     customer has already entered is kept: only the words change. */
+  function applyLanguage() {
+    const html = document.documentElement;
+    html.lang = lang;
+    html.dir = direction(lang);
+    buildFormatter();
+
+    /* Fixed text, keyed in the markup. */
+    document.querySelectorAll("[data-t]").forEach((node) => {
+      node.textContent = say(node.dataset.t);
+    });
+    document.querySelectorAll("[data-t-placeholder]").forEach((node) => {
+      node.placeholder = say(node.dataset.tPlaceholder);
+    });
+
+    $("langLabel").textContent = say("langName");
+    $("langToggle").setAttribute("aria-label", say("langSwitchLabel"));
+
+    applyBusinessText();
+    applyMinimumText();
+    renderCarts();
+    renderLocations();
+    renderEventTypes();
+    renderMenu();
+    renderExtras();
+    renderDateHint();
+    paintTheme();
+    update();
+  }
+
+  function initLanguage() {
+    let stored = null;
+    try { stored = localStorage.getItem("cartapp-lang"); } catch (e) { /* private mode */ }
+    if (LANGUAGES.includes(stored)) lang = stored;
+
+    $("langToggle").addEventListener("click", () => {
+      lang = lang === "en" ? "ar" : "en";
+      try { localStorage.setItem("cartapp-lang", lang); } catch (e) { /* ignore */ }
+      applyLanguage();
+    });
+  }
+
   /* --- Theme ----------------------------------------------------------- */
   const ICON = {
     /* A moon to switch to dark, a sun to switch back. */
@@ -603,24 +699,30 @@
          'M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/>',
   };
 
+  const darkMedia = window.matchMedia("(prefers-color-scheme: dark)");
+
+  function isDark() {
+    const root = document.documentElement;
+    return (
+      root.getAttribute("data-theme") === "dark" ||
+      (!root.hasAttribute("data-theme") && darkMedia.matches)
+    );
+  }
+
+  /* Also called when the language changes, to relabel the button. */
+  function paintTheme() {
+    const dark = isDark();
+    $("themeIcon").innerHTML = dark ? ICON.sun : ICON.moon;
+    $("themeToggle").setAttribute(
+      "aria-label", say(dark ? "themeToLight" : "themeToDark")
+    );
+  }
+
   function initTheme() {
     const root = document.documentElement;
     const button = $("themeToggle");
-    const icon = $("themeIcon");
-    const media = window.matchMedia("(prefers-color-scheme: dark)");
-
-    const isDark = () =>
-      root.getAttribute("data-theme") === "dark" ||
-      (!root.hasAttribute("data-theme") && media.matches);
-
-    function paint() {
-      const dark = isDark();
-      icon.innerHTML = dark ? ICON.sun : ICON.moon;
-      button.setAttribute(
-        "aria-label",
-        dark ? "Switch to light theme" : "Switch to dark theme"
-      );
-    }
+    const media = darkMedia;
+    const paint = paintTheme;
 
     let stored = null;
     try { stored = localStorage.getItem("cartapp-theme"); } catch (e) { /* private mode */ }
@@ -642,19 +744,17 @@
 
   /* --- Wire everything up ---------------------------------------------- */
   function init() {
-    applyBusinessText();
-    applyMinimumText();
     el.hours.min = cfg.duration.includedHours;
     el.hours.max = cfg.duration.maxHours;
     el.hours.value = cfg.duration.includedHours;
 
-    renderCarts();
-    renderLocations();
     initEventDate();
-    renderEventTypes();
-    renderMenu();
-    renderExtras();
+    wireCartChooser();
+    wireEventTypes();
+    initLanguage();
     initTheme();
+    /* Draws the whole page in the chosen language, formatter included. */
+    applyLanguage();
 
     el.form.addEventListener("input", (e) => {
       if (e.target.classList.contains("qty-input")) {

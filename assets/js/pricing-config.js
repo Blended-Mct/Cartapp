@@ -15,20 +15,31 @@ const PRICING = {
   business: {
     name: "Blended",
     tagline: "Ice cream · drinks · shakes",
+    tagline_ar: "آيس كريم · مشروبات · ميلك شيك",
     disclaimer:
       "This is an instant estimate based on the details entered. " +
       "Final pricing is confirmed when your booking is agreed.",
+    disclaimer_ar:
+      "هذا تقدير فوري بناءً على ما أدخلته. " +
+      "يُؤكَّد السعر النهائي عند الاتفاق على الحجز.",
   },
 
   /* --- Currency --------------------------------------------------------
      decimals: 3 for rials (baisa). Use 2 for most other currencies.        */
   currency: "OMR",
   locale: "en-OM",
+  /* Arabic keeps Western digits, which is how prices are written in Oman.
+     For Arabic-Indic numerals (١٢٣) use "ar-OM" instead. */
+  locale_ar: "ar-OM-u-nu-latn",
   decimals: 3,
+
+  /* The language the page opens in. A visitor's choice is remembered. */
+  defaultLanguage: "en",
 
   /* --- What every booking starts with ---------------------------------- */
   serviceFee: 30,          // charged once on every booking
   serviceFeeLabel: "Cart service fee",
+  serviceFeeLabel_ar: "رسوم خدمة العربة",
 
   /* The smallest quantity we serve of any one menu item. The cup counters
      will not go below it: they step straight from 0 up to this number, so a
@@ -50,13 +61,16 @@ const PRICING = {
     chooseLater:
       "Flavours and toppings are chosen later, once your booking is " +
       "confirmed — there is nothing to decide now.",
+    chooseLater_ar:
+      "تُختار النكهات والإضافات لاحقًا بعد تأكيد الحجز — " +
+      "لا حاجة لتحديدها الآن.",
   },
 
   /* --- Where the event is ----------------------------------------------
      A drop-down, not a distance. Add a row for each area you cover.        */
   locations: [
-    { id: "muscat", name: "Muscat", charge: 0 },
-    { id: "barka",  name: "Barka",  charge: 15 },
+    { id: "muscat", name: "Muscat", name_ar: "مسقط", charge: 0 },
+    { id: "barka",  name: "Barka",  name_ar: "بركاء", charge: 15 },
   ],
 
   /* --- The three carts -------------------------------------------------
@@ -66,21 +80,27 @@ const PRICING = {
     {
       id: "icecream",
       name: "Ice Cream Cart",
+      name_ar: "عربة الآيس كريم",
       blurb: "Gelato and soft serve, scooped to order.",
+      blurb_ar: "جيلاتو وآيس كريم سوفت، يُقدَّم عند الطلب.",
       emoji: "🍦",
       serves: ["icecream"],
     },
     {
       id: "drinks",
       name: "Drinks Cart",
+      name_ar: "عربة المشروبات",
       blurb: "Espresso, matcha and iced drinks.",
+      blurb_ar: "إسبريسو وماتشا ومشروبات مثلجة.",
       emoji: "🥤",
       serves: ["drinks"],
     },
     {
       id: "blend",
       name: "The Blend",
+      name_ar: "البلند",
       blurb: "Ice cream and drinks together — the full Blended cart.",
+      blurb_ar: "آيس كريم ومشروبات معًا — عربة بلند كاملة.",
       emoji: "🍦🥤",
       serves: ["icecream", "drinks"],
     },
@@ -94,39 +114,50 @@ const PRICING = {
                    to it automatically, so there is no need to repeat it.    */
   menu: [
     {
-      id: "gelato", group: "icecream", name: "Gelato",
+      id: "gelato", group: "icecream", name: "Gelato", name_ar: "جيلاتو",
       pricePerCup: 1,
       note: "Includes 3 toppings of your choice",
+      note_ar: "يشمل ٣ إضافات من اختيارك",
     },
     {
-      id: "softserve", group: "icecream", name: "Soft serve",
+      id: "softserve", group: "icecream", name: "Soft serve", name_ar: "آيس كريم سوفت",
       pricePerCup: 1.5, minCups: 200,
       note: "Swirled to order, in a cone or a cup",
+      note_ar: "يُحضَّر عند الطلب، في كورن أو كوب",
     },
     {
       id: "espresso", group: "drinks", name: "Coffee — espresso base",
+      name_ar: "قهوة بقاعدة إسبريسو",
       pricePerCup: 1.5,
       note: "Espresso, americano, latte, cappuccino",
+      note_ar: "إسبريسو، أمريكانو، لاتيه، كابتشينو",
     },
     {
       id: "creamy_espresso", group: "drinks", name: "Creamy espresso",
+      name_ar: "إسبريسو بالكريمة",
       pricePerCup: 1.5,
       note: "Espresso over sweet cream",
+      note_ar: "إسبريسو فوق كريمة حلوة",
     },
     {
-      id: "matcha", group: "drinks", name: "Matcha",
+      id: "matcha", group: "drinks", name: "Matcha", name_ar: "ماتشا",
       pricePerCup: 2,
       note: "Ceremonial grade, iced or hot",
+      note_ar: "درجة احتفالية، باردة أو ساخنة",
     },
     {
       id: "creamy_matcha", group: "drinks", name: "Creamy matcha",
+      name_ar: "ماتشا بالكريمة",
       pricePerCup: 1.5,
       note: "Matcha over sweet cream",
+      note_ar: "ماتشا فوق كريمة حلوة",
     },
     {
       id: "other_drinks", group: "drinks", name: "Iced tea & hibiscus",
+      name_ar: "شاي مثلج وكركديه",
       pricePerCup: 1.5,
       note: "Refreshing, caffeine-free options",
+      note_ar: "خيارات منعشة وخالية من الكافيين",
     },
   ],
 
@@ -134,18 +165,21 @@ const PRICING = {
      appliesTo : "icecream", "drinks" or "all" — which cups it is counted on */
   cupExtras: [
     {
-      id: "extra_toppings", name: "Extra toppings",
+      id: "extra_toppings", name: "Extra toppings", name_ar: "إضافات تزيين إضافية",
       note: "Beyond the 3 included with gelato",
+      note_ar: "زيادةً على الـ٣ المشمولة مع الجيلاتو",
       pricePerCup: 0.2, appliesTo: "icecream",
     },
     {
-      id: "cookies", name: "Cookies",
+      id: "cookies", name: "Cookies", name_ar: "كوكيز",
       note: "Add a cookie to each cup",
+      note_ar: "كوكيز مع كل كوب",
       pricePerCup: 0.9, appliesTo: "icecream",
     },
     {
-      id: "branded_cups", name: "Branded cups",
+      id: "branded_cups", name: "Branded cups", name_ar: "أكواب بشعارك",
       note: "Printed with your logo or event name",
+      note_ar: "مطبوعة بشعارك أو اسم مناسبتك",
       pricePerCup: 0.25, appliesTo: "all",
     },
   ],
@@ -153,13 +187,16 @@ const PRICING = {
   /* --- Extras charged once ---------------------------------------------- */
   flatExtras: [
     {
-      id: "female_server", name: "Female server",
+      id: "female_server", name: "Female server", name_ar: "عاملة ضيافة",
       note: "A female member of staff on the cart",
+      note_ar: "موظفة على العربة",
       price: 15,
     },
     {
       id: "branded_cart", name: "Customised branded cart",
+      name_ar: "عربة بهوية مناسبتك",
       note: "The cart carries your wedding, brand or event branding",
+      note_ar: "تحمل العربة هوية عرسك أو علامتك أو مناسبتك",
       price: 40,
     },
   ],
@@ -187,8 +224,8 @@ const PRICING = {
     /* The event types offered in the drop-down. `needsCompanyName` asks for
        a company name when that type is chosen. */
     eventTypes: [
-      { id: "company", name: "Company event", needsCompanyName: true },
-      { id: "private", name: "Private event", needsCompanyName: false },
+      { id: "company", name: "Company event", name_ar: "مناسبة شركة", needsCompanyName: true },
+      { id: "private", name: "Private event", name_ar: "مناسبة خاصة", needsCompanyName: false },
     ],
   },
 
@@ -198,12 +235,14 @@ const PRICING = {
   tax: {
     percent: 0,
     label: "VAT",
+    label_ar: "ضريبة القيمة المضافة",
   },
 
   /* --- Deposit ---------------------------------------------------------- */
   deposit: {
     percent: 30,         // 0 = don't show a deposit line
     label: "Deposit to secure the date",
+    label_ar: "عربون لتثبيت التاريخ",
   },
 };
 
