@@ -150,6 +150,33 @@ const PRICING = {
     },
   ],
 
+  /* --- Sending enquiries to your inbox ---------------------------------
+     A plain website cannot send email by itself, so the form hands the
+     enquiry to a relay service which emails it to you.
+
+     email    : where enquiries are sent.
+     mode     : "formsubmit" posts to formsubmit.co, which emails you.
+                "mailto" instead opens the customer's own email app with the
+                enquiry written out, for them to press send. No relay, but it
+                depends on their phone having email set up.
+     subject  : the subject line of the email you receive.
+
+     ACTIVATION (formsubmit mode, once only): submit one test enquiry from the
+     page yourself, then click the confirmation link formsubmit.co emails to
+     the address below. Until you do, enquiries are not delivered.           */
+  enquiry: {
+    email: "Blended.mct@gmail.com",
+    mode: "formsubmit",
+    subject: "New cart enquiry from the website",
+
+    /* The event types offered in the drop-down. `needsCompanyName` asks for
+       a company name when that type is chosen. */
+    eventTypes: [
+      { id: "company", name: "Company event", needsCompanyName: true },
+      { id: "private", name: "Private event", needsCompanyName: false },
+    ],
+  },
+
   /* --- Tax -------------------------------------------------------------
      Oman VAT is 5%. Set percent to 5 if you are VAT-registered and the
      prices above are exclusive of VAT. 0 = no tax line shown.              */

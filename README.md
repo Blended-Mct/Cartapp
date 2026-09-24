@@ -2,7 +2,8 @@
 
 An online calculator for Blended's catering carts. A customer picks a cart, says
 how many cups of each item they would like, and sees an itemised cost estimate
-in Omani Rials that updates as they type.
+in Omani Rials that updates as they type. They can then send the whole thing to
+you as an enquiry.
 
 It is a plain website: no server, no database, no accounts, no build step. Open
 `index.html` and it works.
@@ -30,6 +31,7 @@ Amounts are in Omani Rials to 3 decimals (baisa): `1` is 1.000 OMR, `0.25` is
 | Menu items and their per-cup prices | `menu` |
 | Extras charged per cup | `cupExtras` |
 | Extras charged once | `flatExtras` |
+| Where enquiries are emailed | `enquiry` |
 | VAT | `tax` |
 | Deposit percentage | `deposit` |
 
@@ -50,9 +52,10 @@ it appears on the form automatically.
 
 Two different kinds, and they behave differently:
 
-- **`minimumCups`** (currently 50) is the smallest booking overall. An order
-  below it is still priced, but the customer is told how many cups short they
-  are.
+- **`minimumCups`** (currently 50) is the smallest booking overall. It is stated
+  at the top of the page and again above the menu, before any cups are chosen.
+  An order below it is still priced — the customer is told how many cups short
+  they are — but it cannot be submitted as an enquiry.
 - **`minCups` on a menu item or extra** is the smallest quantity served of that
   one thing. Order fewer and **the minimum is charged** — 120 cups of soft serve
   bills as 200, and the breakdown says so in plain words.
@@ -97,6 +100,55 @@ Add a row for each area you cover. The first one in the list is the default.
 Set a price to `0` and it disappears from the estimate — that works for
 `tax.percent` and `deposit.percent`. To drop a menu item, an extra or an area,
 delete its block from the list.
+
+---
+
+## Enquiries by email
+
+**Read this once — there is a step only you can do.**
+
+A plain website cannot send email by itself. When a customer presses *Send my
+enquiry*, the form hands the enquiry to **formsubmit.co**, a free relay that
+emails it to the address in `enquiry.email` (currently `Blended.mct@gmail.com`).
+
+### Switching it on
+
+1. Open the calculator and send **one test enquiry** yourself.
+2. formsubmit.co emails `Blended.mct@gmail.com` asking you to confirm the
+   address. **Click that link.**
+3. Enquiries now arrive in your inbox. Do this once; it does not expire.
+
+Until step 2 is done, enquiries are *not* delivered.
+
+### What arrives
+
+One email per enquiry, containing the customer's name, event type, company (for
+company events), phone, email and date if given, their notes, and the full
+itemised estimate down to the total and the deposit figure.
+
+### If the relay is ever down
+
+The customer is shown *"Send it by email instead"*, which opens their own email
+app with the whole enquiry already written out. An enquiry is never silently
+lost.
+
+### The alternatives
+
+| Option | Set `enquiry.mode` to | Trade-off |
+|---|---|---|
+| formsubmit.co relay | `"formsubmit"` | Works on any host, free, no code. Enquiry data passes through a third party. |
+| Customer's own email app | `"mailto"` | Nothing passes through anyone else, but it depends on the customer having email set up on their phone, and they must press send themselves. |
+
+There is a third route if you outgrow both: your own form endpoint, or a Google
+Apps Script bound to your Gmail. That needs a small amount of setup and is worth
+it only at volume.
+
+### A note on customer data
+
+Names and phone numbers now leave the page. In `formsubmit` mode they pass
+through formsubmit.co on the way to your inbox; nothing is stored in this
+website and there is no database. If you would rather no third party saw them,
+use `"mailto"` mode.
 
 ---
 
@@ -155,8 +207,10 @@ assets/img/blended-logo.png    the wordmark, shown in the header
 assets/img/blended-shopfront.webp  the illustration at the top of the form
 assets/js/pricing-config.js    ← your prices, the only file you need to edit
 assets/js/calculator.js        the pricing maths
+assets/js/enquiry.js           validating the form and writing the email
 assets/js/app.js               builds the form and keeps the estimate live
 test/calculator.test.js        tests for the pricing rules
+test/enquiry.test.js           tests for the enquiry form
 ```
 
 ## Changing the look
@@ -182,8 +236,9 @@ the same names.
 
 ## Notes
 
-- The estimate is shown on the page only — nothing is submitted or stored
-  anywhere, and no customer details are collected.
+- Nothing is stored in this website and there is no database. Customer details
+  are only sent when the customer presses *Send my enquiry* — see
+  **Enquiries by email** above.
 - Customers can print the estimate or save it as a PDF; only the estimate panel
   is printed, not the form.
 - The page follows the visitor's light/dark preference, with a manual toggle in

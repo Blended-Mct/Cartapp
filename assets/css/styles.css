@@ -25,6 +25,7 @@
   --coral: #e88687;
   --cream: #f3e6c8;
   --good: #1d6828;
+  --danger: #a3261f;
   --warn-bg: #fdf1e7;
   --warn-border: #f0c9a9;
   --warn-text: #a9521f;
@@ -51,6 +52,7 @@
     --coral: #e88687;
     --cream: #222d1f;
     --good: #7fd193;
+    --danger: #f08b82;
     --warn-bg: #2d2114;
     --warn-border: #5a3f24;
     --warn-text: #e9b98d;
@@ -73,6 +75,7 @@
   --coral: #e88687;
   --cream: #222d1f;
   --good: #7fd193;
+  --danger: #f08b82;
   --warn-bg: #2d2114;
   --warn-border: #5a3f24;
   --warn-text: #e9b98d;
@@ -487,3 +490,81 @@ input[type="range"] {
 @media (min-width: 900px) { .mobile-bar { display: none; } }
 @media (max-width: 899px) { body.has-mobile-bar { padding-bottom: 84px; } }
 @media print { .mobile-bar { display: none !important; } }
+
+/* --- The order minimum, stated before anything is chosen --------------- */
+.minimum-banner {
+  margin: 0 0 24px;
+  padding: 12px 14px;
+  border: 1.5px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: .88rem;
+  font-weight: 600;
+}
+
+.field-note {
+  margin: -4px 0 14px;
+  font-size: .82rem;
+  color: var(--text-muted);
+}
+
+/* --- Enquiry form ------------------------------------------------------ */
+.input-group-wide { margin-top: 18px; }
+
+.input-group textarea {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  resize: vertical;
+}
+.input-group input[type="text"],
+.input-group input[type="tel"],
+.input-group input[type="email"] {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+}
+.input-group textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.error {
+  margin: 6px 0 0;
+  font-size: .8rem;
+  font-weight: 600;
+  color: var(--danger);
+}
+.error:empty { display: none; }
+
+.btn-send { margin-top: 20px; }
+
+.send-status { margin: 12px 0 0; font-size: .85rem; color: var(--text-muted); }
+.send-status:empty { display: none; }
+.send-status.is-error { color: var(--danger); font-weight: 600; }
+.send-status a { color: var(--accent); font-weight: 700; }
+
+/* --- After sending ----------------------------------------------------- */
+.sent-panel {
+  margin: 0 0 28px;
+  padding: 20px;
+  border: 1.5px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+}
+.sent-title {
+  margin: 0 0 6px;
+  font-family: var(--font-display);
+  font-size: 1.25rem; font-weight: 800; color: var(--accent);
+}
+.sent-body { margin: 0 0 16px; font-size: .9rem; color: var(--text); }
+
+@media print {
+  .minimum-banner, .sent-panel { display: none !important; }
+}

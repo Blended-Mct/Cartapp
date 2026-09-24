@@ -38,6 +38,7 @@
     <p class="page-intro">
       Tell us what you would like served and the price updates as you type.
     </p>
+    <p class="minimum-banner" id="minimumBanner"></p>
 
     <!-- 1. Cart -->
     <fieldset class="field">
@@ -51,6 +52,7 @@
         2. Your menu
         <span class="label-note">how many cups of each</span>
       </legend>
+      <p class="field-note" id="menuMinimumNote"></p>
       <div id="menu"></div>
       <p class="cups-total" id="cupsTotal"></p>
     </fieldset>
@@ -79,6 +81,80 @@
       <legend class="label">4. Extras <span class="label-note">optional</span></legend>
       <div class="addons" id="extras"></div>
     </fieldset>
+
+    <!-- 5. Send it -->
+    <fieldset class="field" id="enquiryFields">
+      <legend class="label">5. Send us your enquiry</legend>
+      <p class="field-note">
+        We will come back to you with a confirmed quote. Nothing is booked yet.
+      </p>
+
+      <div class="grid-2">
+        <div class="input-group">
+          <label for="custName"><span>Your name</span></label>
+          <input type="text" id="custName" name="custName" autocomplete="name"
+                 placeholder="Full name">
+          <p class="error" id="errName"></p>
+        </div>
+
+        <div class="input-group">
+          <label for="eventType"><span>Kind of event</span></label>
+          <select id="eventType" name="eventType"></select>
+          <p class="error" id="errEventTypeId"></p>
+        </div>
+
+        <div class="input-group" id="companyGroup" hidden>
+          <label for="companyName"><span>Company name</span></label>
+          <input type="text" id="companyName" name="companyName"
+                 autocomplete="organization" placeholder="Company or organisation">
+          <p class="error" id="errCompanyName"></p>
+        </div>
+
+        <div class="input-group">
+          <label for="phone"><span>Phone / WhatsApp</span></label>
+          <input type="tel" id="phone" name="phone" autocomplete="tel"
+                 inputmode="tel" placeholder="9xxx xxxx">
+          <p class="error" id="errPhone"></p>
+        </div>
+
+        <div class="input-group">
+          <label for="custEmail"><span>Email</span>
+            <span class="label-note">optional</span></label>
+          <input type="email" id="custEmail" name="custEmail"
+                 autocomplete="email" placeholder="you@example.com">
+          <p class="error" id="errEmail"></p>
+        </div>
+
+        <div class="input-group">
+          <label for="eventDate"><span>Event date</span>
+            <span class="label-note">optional</span></label>
+          <input type="date" id="eventDate" name="eventDate">
+        </div>
+      </div>
+
+      <div class="input-group input-group-wide">
+        <label for="notes"><span>Anything else we should know?</span>
+          <span class="label-note">optional</span></label>
+        <textarea id="notes" name="notes" rows="3"
+                  placeholder="Venue, timings, flavours, anything at all"></textarea>
+      </div>
+
+      <p class="error" id="errCups"></p>
+
+      <button type="submit" class="btn btn-primary btn-send" id="sendBtn">
+        Send my enquiry
+      </button>
+      <p class="send-status" id="sendStatus" role="status"></p>
+    </fieldset>
+
+    <!-- Shown in place of the fields once the enquiry is away -->
+    <div class="sent-panel" id="sentPanel" hidden>
+      <p class="sent-title">Thank you — your enquiry is on its way.</p>
+      <p class="sent-body" id="sentBody"></p>
+      <button type="button" class="btn btn-ghost" id="againBtn">
+        Start another enquiry
+      </button>
+    </div>
 
     <button type="button" class="btn btn-ghost" id="resetBtn">Start over</button>
   </form>
@@ -122,12 +198,13 @@
 <footer class="site-footer">
   <p class="wrap">
     <span data-business-name>Blended</span> — prices shown are an estimate,
-    not a binding quotation.
+    not a binding quotation. Details you send reach us by email only.
   </p>
 </footer>
 
 <script src="assets/js/pricing-config.js"></script>
 <script src="assets/js/calculator.js"></script>
+<script src="assets/js/enquiry.js"></script>
 <script src="assets/js/app.js"></script>
 </body>
 </html>

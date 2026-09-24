@@ -37,6 +37,15 @@
     foot: $("breakdownFoot"),
     mobileBar: $("mobileBar"),
     mobileBarTotal: $("mobileBarTotal"),
+    minimumBanner: $("minimumBanner"),
+    menuMinimumNote: $("menuMinimumNote"),
+    enquiryFields: $("enquiryFields"),
+    sentPanel: $("sentPanel"),
+    sentBody: $("sentBody"),
+    sendBtn: $("sendBtn"),
+    sendStatus: $("sendStatus"),
+    eventType: $("eventType"),
+    companyGroup: $("companyGroup"),
   };
 
   let selectedCartId = cfg.carts[0].id;
@@ -56,6 +65,16 @@
     document.querySelectorAll("[data-business-disclaimer]").forEach((n) => {
       n.textContent = cfg.business.disclaimer;
     });
+  }
+
+  /* --- The order minimum, said once at the top and once by the menu ---- */
+  function applyMinimumText() {
+    const text = `Minimum order ${cfg.minimumCups} cups.`;
+    el.minimumBanner.textContent =
+      `${text} Every booking starts at ${fmt(cfg.serviceFee)}, ` +
+      `which covers ${cfg.duration.includedHours} hours of service.`;
+    el.menuMinimumNote.textContent =
+      `${text} Mix and match freely — it is the total that counts.`;
   }
 
   /* --- Cart chooser ---------------------------------------------------- */
@@ -197,6 +216,43 @@
     });
   }
 
+  /* --- Event types ------------------------------------------------------ */
+  function renderEventTypes() {
+    el.eventType.innerHTML = "";
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = "Please choose…";
+    el.eventType.appendChild(placeholder);
+
+    cfg.enquiry.eventTypes.forEach((type) => {
+      const option = document.createElement("option");
+      option.value = type.id;
+      option.textContent = type.name;
+      el.eventType.appendChild(option);
+    });
+
+    el.eventType.addEventListener("change", syncCompanyField);
+    syncCompanyField();
+  }
+
+  /* The company name is only asked for when the event type needs it. */
+  function syncCompanyField() {
+    const type = eventTypeById(el.eventType.value, cfg);
+    el.companyGroup.hidden = !(type && type.needsCompanyName);
+  }
+
+  function readDetails() {
+    return {
+      name: $("custName").value,
+      eventTypeId: el.eventType.value,
+      companyName: $("companyName").value,
+      phone: $("phone").value,
+      email: $("custEmail").value,
+      eventDate: $("eventDate").value,
+      notes: $("notes").value,
+    };
+  }
+
   /* --- Reading the form ------------------------------------------------ */
   function readInput() {
     return {
@@ -303,6 +359,106 @@
     renderQuote(q);
   }
 
+  /* --- Sending the enquiry ---------------------------------------------- */
+
+  const ERROR_FIELDS = ["name", "eventTypeId", "companyName", "phone", "email", "cups"];
+
+  function showErrors(errors) {
+    ERROR_FIELDS.forEach((field) => {
+      const node = $("err" + field.charAt(0).toUpperCase() + field.slice(1));
+      if (node) node.textContent = errors[field] || "";
+    });
+  }
+
+  function setSending(sending) {
+    el.sendBtn.disabled = sending;
+    el.sendBtn.textContent = sending ? "Sending…" : "Send my enquiry";
+  }
+
+  /* When a send cannot go through, the customer is handed their own email
+     app with the enquiry already written, so nothing is lost. */
+  function offerMailtoFallback(details, quote, message) {
+    el.sendStatus.className = "send-status is-error";
+    el.sendStatus.textContent = "";
+
+    const text = document.createElement("span");
+    text.textContent = message + " ";
+    const link = document.createElement("a");
+    link.href = enquiryMailto(details, quote, cfg);
+    link.textContent = "Send it by email instead";
+    el.sendStatus.append(text, link);
+  }
+
+  function showSent(details) {
+    el.enquiryFields.hidden = true;
+    el.sentPanel.hidden = false;
+    const name = (details.name || "").trim().split(/\s+/)[0];
+    el.sentBody.textContent =
+      `${name ? name + ", we" : "We"} have your enquiry and will be in touch on ` +
+      `${details.phone.trim()} with a confirmed quote. ` +
+      `Your estimate is still on screen — print it if you would like a copy.`;
+    el.sentPanel.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  async function submitEnquiry() {
+    const quote = calculateQuote(readInput(), cfg);
+    const details = readDetails();
+    const { ok, errors } = validateEnquiry(details, quote, cfg);
+
+    showErrors(errors);
+    el.sendStatus.className = "send-status";
+    el.sendStatus.textContent = "";
+
+    if (!ok) {
+      /* Send focus to the first thing that needs fixing. */
+      const firstField = ERROR_FIELDS.find((f) => errors[f]);
+      const input = { name: "custName", eventTypeId: "eventType", email: "custEmail" }[firstField]
+        || firstField;
+      const node = $(input) || $("cupsTotal");
+      if (node && node.focus) node.focus();
+      else if (node) node.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+
+    /* In mailto mode the customer's own email app does the sending. */
+    if (cfg.enquiry.mode === "mailto") {
+      window.location.href = enquiryMailto(details, quote, cfg);
+      showSent(details);
+      return;
+    }
+
+    const endpoint = enquiryEndpoint(cfg);
+    if (!endpoint) {
+      offerMailtoFallback(details, quote, "This form is not set up to send yet.");
+      return;
+    }
+
+    setSending(true);
+    try {
+      const payload = buildEnquiryPayload(details, quote, cfg);
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({
+          ...payload,
+          _subject: cfg.enquiry.subject,
+          _template: "table",
+          _captcha: "false",
+        }),
+      });
+
+      if (!response.ok) throw new Error(`Relay returned ${response.status}`);
+      showSent(details);
+    } catch (err) {
+      offerMailtoFallback(
+        details, quote,
+        "We could not send that just now — sorry."
+      );
+    } finally {
+      setSending(false);
+    }
+  }
+
   /* --- Theme ----------------------------------------------------------- */
   const ICON = {
     /* A moon to switch to dark, a sun to switch back. */
@@ -351,12 +507,14 @@
   /* --- Wire everything up ---------------------------------------------- */
   function init() {
     applyBusinessText();
+    applyMinimumText();
     el.hours.min = cfg.duration.includedHours;
     el.hours.max = cfg.duration.maxHours;
     el.hours.value = cfg.duration.includedHours;
 
     renderCarts();
     renderLocations();
+    renderEventTypes();
     renderMenu();
     renderExtras();
     initTheme();
@@ -372,7 +530,10 @@
       update();
     });
     el.form.addEventListener("change", update);
-    el.form.addEventListener("submit", (e) => e.preventDefault());
+    el.form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      submitEnquiry();
+    });
 
     $("resetBtn").addEventListener("click", () => {
       el.form.reset();
@@ -383,9 +544,27 @@
         o.classList.toggle("is-selected", i === 0);
       });
       el.hours.value = cfg.duration.includedHours;
+      showErrors({});
+      el.sendStatus.textContent = "";
+      el.enquiryFields.hidden = false;
+      el.sentPanel.hidden = true;
+      syncCompanyField();
       renderMenu();
       renderExtras();
       update();
+    });
+
+    $("againBtn").addEventListener("click", () => {
+      el.enquiryFields.hidden = false;
+      el.sentPanel.hidden = true;
+      showErrors({});
+      el.sendStatus.textContent = "";
+      ["custName", "companyName", "phone", "custEmail", "notes"].forEach((id) => {
+        $(id).value = "";
+      });
+      el.eventType.value = "";
+      syncCompanyField();
+      el.enquiryFields.scrollIntoView({ behavior: "smooth", block: "start" });
     });
 
     $("printBtn").addEventListener("click", () => window.print());
