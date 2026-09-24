@@ -580,3 +580,17 @@ input[type="range"] {
   font-size: .72rem;
   font-weight: 700;
 }
+
+/* "Choose your flavours later" — said by the menu, and again once sent */
+.choose-later {
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--leaf);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: .82rem;
+}
+
+/* The date stands alone at the top, so it does not need full width */
+.input-group-date { max-width: 320px; }

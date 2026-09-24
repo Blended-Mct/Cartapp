@@ -17,7 +17,7 @@ const cfg = {
   serviceFee: 30,
   serviceFeeLabel: "Cart service fee",
   minimumCups: 50,
-  duration: { includedHours: 2, extraHourRate: 5, maxHours: 10 },
+  duration: { includedHours: 3, extraHourRate: 5, maxHours: 10 },
   locations: [
     { id: "muscat", name: "Muscat", charge: 0 },
     { id: "barka", name: "Barka", charge: 15 },
@@ -52,7 +52,7 @@ const base = {
   cartId: "icecream",
   quantities: { gelato: 100 },
   locationId: "muscat",
-  hours: 2,
+  hours: 3,
   cupExtras: [],
   flatExtras: [],
 };
@@ -77,15 +77,18 @@ test("cups are charged at the item's per-cup price", () => {
   assert.equal(r.totalCups, 100);
 });
 
-test("two hours are included and further hours are charged", () => {
+test("three hours are included and further hours are charged", () => {
   assert.equal(lineAmount(q(), "Additional hours"), null);
-  assert.equal(lineAmount(q({ hours: 5 }), "Additional hours"), 15); // 3 x 5
+  assert.equal(lineAmount(q({ hours: 4 }), "Additional hours"), 5);  // 1 x 5
+  assert.equal(lineAmount(q({ hours: 6 }), "Additional hours"), 15); // 3 x 5
 });
 
 test("hours below the included minimum are raised, never credited", () => {
-  const r = q({ hours: 0 });
-  assert.equal(r.hours, 2);
-  assert.equal(lineAmount(r, "Additional hours"), null);
+  [0, 1, 2].forEach((hours) => {
+    const r = q({ hours });
+    assert.equal(r.hours, 3);
+    assert.equal(lineAmount(r, "Additional hours"), null);
+  });
 });
 
 test("Muscat is free and Barka carries a flat charge", () => {

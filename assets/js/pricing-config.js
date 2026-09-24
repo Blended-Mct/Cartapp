@@ -38,9 +38,18 @@ const PRICING = {
 
   /* --- How long the cart serves ---------------------------------------- */
   duration: {
-    includedHours: 2,      // hours covered by the service fee
+    includedHours: 3,      // hours covered by the service fee
     extraHourRate: 5,      // each hour beyond that
     maxHours: 10,
+  },
+
+  /* --- Wording shown on the page and repeated in the enquiry email ------ */
+  messages: {
+    /* Customers often stall trying to pick flavours before they have booked.
+       This says they do not have to. */
+    chooseLater:
+      "Flavours and toppings are chosen later, once your booking is " +
+      "confirmed — there is nothing to decide now.",
   },
 
   /* --- Where the event is ----------------------------------------------
@@ -159,11 +168,12 @@ const PRICING = {
      A plain website cannot send email by itself, so the form hands the
      enquiry to a relay service which emails it to you.
 
-     email    : where enquiries are sent.
-     mode     : "formsubmit" posts to formsubmit.co, which emails you.
-                "mailto" instead opens the customer's own email app with the
-                enquiry written out, for them to press send. No relay, but it
-                depends on their phone having email set up.
+     email    : where enquiries are sent. This is the default and needs no
+                action from the customer — pressing Send emails you directly.
+     mode     : "formsubmit" (the default) posts to formsubmit.co, which emails
+                the address below. "mailto" instead opens the customer's own
+                email app with the enquiry written out, for them to press send;
+                only worth using if you would rather no relay saw the details.
      subject  : the subject line of the email you receive.
 
      ACTIVATION (formsubmit mode, once only): submit one test enquiry from the

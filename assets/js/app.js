@@ -48,6 +48,9 @@
     sendStatus: $("sendStatus"),
     eventType: $("eventType"),
     companyGroup: $("companyGroup"),
+    eventDate: $("eventDate"),
+    dateHint: $("dateHint"),
+    chooseLaterNote: $("chooseLaterNote"),
   };
 
   let selectedCartId = cfg.carts[0].id;
@@ -83,6 +86,7 @@
       `Each item is served from ${cfg.minimumCups} cups up` +
       (higher.length ? `, ${higher.join(", ")}` : "") +
       `. Add as many kinds as you like.`;
+    el.chooseLaterNote.textContent = (cfg.messages && cfg.messages.chooseLater) || "";
   }
 
   /* --- Cart chooser ---------------------------------------------------- */
@@ -253,6 +257,29 @@
     });
   }
 
+  /* --- The event date --------------------------------------------------- */
+  function initEventDate() {
+    /* The picker itself refuses past dates; validation catches typed ones. */
+    el.eventDate.min = isoDate(new Date());
+    el.eventDate.addEventListener("change", renderDateHint);
+    renderDateHint();
+  }
+
+  function renderDateHint() {
+    const value = el.eventDate.value;
+    if (!value) {
+      el.dateHint.textContent = "We need the date before we can hold a cart for you.";
+      return;
+    }
+    const [y, m, d] = value.split("-").map(Number);
+    const date = new Date(y, m - 1, d);
+    el.dateHint.textContent = Number.isNaN(date.getTime())
+      ? ""
+      : date.toLocaleDateString(cfg.locale, {
+          weekday: "long", day: "numeric", month: "long", year: "numeric",
+        });
+  }
+
   /* --- Event types ------------------------------------------------------ */
   function renderEventTypes() {
     el.eventType.innerHTML = "";
@@ -285,7 +312,7 @@
       companyName: $("companyName").value,
       phone: $("phone").value,
       email: $("custEmail").value,
-      eventDate: $("eventDate").value,
+      eventDate: el.eventDate.value,
       notes: $("notes").value,
     };
   }
@@ -389,17 +416,30 @@
     markChosenItems();
     renderHints(q);
     renderQuote(q);
+    refreshErrors();
   }
 
   /* --- Sending the enquiry ---------------------------------------------- */
 
-  const ERROR_FIELDS = ["name", "eventTypeId", "companyName", "phone", "email", "cups"];
+  const ERROR_FIELDS = [
+    "eventDate", "name", "eventTypeId", "companyName", "phone", "email", "cups",
+  ];
+
+  /* Errors appear only once someone has tried to send. After that they are
+     kept live, so a message clears the moment its field is put right. */
+  let hasTriedToSend = false;
 
   function showErrors(errors) {
     ERROR_FIELDS.forEach((field) => {
       const node = $("err" + field.charAt(0).toUpperCase() + field.slice(1));
       if (node) node.textContent = errors[field] || "";
     });
+  }
+
+  function refreshErrors() {
+    if (!hasTriedToSend) return;
+    const quote = calculateQuote(readInput(), cfg);
+    showErrors(validateEnquiry(readDetails(), quote, cfg).errors);
   }
 
   function setSending(sending) {
@@ -425,9 +465,11 @@
     el.enquiryFields.hidden = true;
     el.sentPanel.hidden = false;
     const name = (details.name || "").trim().split(/\s+/)[0];
+    const later = (cfg.messages && cfg.messages.chooseLater) || "";
     el.sentBody.textContent =
       `${name ? name + ", we" : "We"} have your enquiry and will be in touch on ` +
       `${details.phone.trim()} with a confirmed quote. ` +
+      (later ? later + " " : "") +
       `Your estimate is still on screen — print it if you would like a copy.`;
     el.sentPanel.scrollIntoView({ behavior: "smooth", block: "center" });
   }
@@ -437,6 +479,7 @@
     const details = readDetails();
     const { ok, errors } = validateEnquiry(details, quote, cfg);
 
+    hasTriedToSend = true;
     showErrors(errors);
     el.sendStatus.className = "send-status";
     el.sendStatus.textContent = "";
@@ -444,8 +487,9 @@
     if (!ok) {
       /* Send focus to the first thing that needs fixing. */
       const firstField = ERROR_FIELDS.find((f) => errors[f]);
-      const input = { name: "custName", eventTypeId: "eventType", email: "custEmail" }[firstField]
-        || firstField;
+      const input = {
+        name: "custName", eventTypeId: "eventType", email: "custEmail",
+      }[firstField] || firstField;
       const node = $(input) || $("cupsTotal");
       if (node && node.focus) node.focus();
       else if (node) node.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -546,6 +590,7 @@
 
     renderCarts();
     renderLocations();
+    initEventDate();
     renderEventTypes();
     renderMenu();
     renderExtras();
@@ -562,6 +607,8 @@
       update();
     });
     el.form.addEventListener("change", update);
+    el.enquiryFields.addEventListener("input", refreshErrors);
+    el.enquiryFields.addEventListener("change", refreshErrors);
     el.form.addEventListener("submit", (e) => {
       e.preventDefault();
       submitEnquiry();
@@ -576,6 +623,9 @@
         o.classList.toggle("is-selected", i === 0);
       });
       el.hours.value = cfg.duration.includedHours;
+      el.eventDate.value = "";
+      renderDateHint();
+      hasTriedToSend = false;
       showErrors({});
       el.sendStatus.textContent = "";
       el.enquiryFields.hidden = false;
@@ -589,11 +639,13 @@
     $("againBtn").addEventListener("click", () => {
       el.enquiryFields.hidden = false;
       el.sentPanel.hidden = true;
+      hasTriedToSend = false;
       showErrors({});
       el.sendStatus.textContent = "";
       ["custName", "companyName", "phone", "custEmail", "notes"].forEach((id) => {
         $(id).value = "";
       });
+      renderDateHint();
       el.eventType.value = "";
       syncCompanyField();
       el.enquiryFields.scrollIntoView({ behavior: "smooth", block: "start" });

@@ -3,6 +3,13 @@
    Pure functions, no DOM, so they can be tested on their own.
    ========================================================================== */
 
+/* Today, as a plain YYYY-MM-DD string in the visitor's own timezone — so
+   "today" means their today, not UTC's. */
+function isoDate(date) {
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
 /* Which event types ask for a company name. */
 function eventTypeById(id, config) {
   return (config.enquiry.eventTypes || []).find((t) => t.id === id) || null;
@@ -16,12 +23,23 @@ function eventTypeById(id, config) {
    Returns { ok, errors } where errors is keyed by field, so each message can
    be shown against the input it belongs to.
 --------------------------------------------------------------------------- */
-function validateEnquiry(details, quote, config) {
+function validateEnquiry(details, quote, config, today = new Date()) {
   const errors = {};
   const name = (details.name || "").trim();
   const phone = (details.phone || "").trim();
   const email = (details.email || "").trim();
+  const eventDate = (details.eventDate || "").trim();
   const type = eventTypeById(details.eventTypeId, config);
+
+  /* The date decides whether we are free at all, so it is asked for first and
+     is not optional. Comparing the strings is safe: YYYY-MM-DD sorts by date. */
+  if (!eventDate) {
+    errors.eventDate = "Please tell us the date of your event.";
+  } else if (!/^\d{4}-\d{2}-\d{2}$/.test(eventDate)) {
+    errors.eventDate = "Please choose a date.";
+  } else if (eventDate < isoDate(today)) {
+    errors.eventDate = "That date has passed — please choose a future date.";
+  }
 
   if (name.length < 2) {
     errors.name = "Please tell us your name.";
@@ -75,7 +93,7 @@ function buildEnquiryText(details, quote, config) {
   }
   lines.push(`Phone: ${(details.phone || "").trim()}`);
   if ((details.email || "").trim()) lines.push(`Email: ${details.email.trim()}`);
-  if ((details.eventDate || "").trim()) lines.push(`Event date: ${details.eventDate}`);
+  lines.push(`Event date: ${(details.eventDate || "").trim() || "not given"}`);
 
   lines.push("");
   lines.push("BOOKING");
@@ -105,6 +123,9 @@ function buildEnquiryText(details, quote, config) {
   }
 
   lines.push("");
+  if (config.messages && config.messages.chooseLater) {
+    lines.push(config.messages.chooseLater);
+  }
   lines.push("Sent from the Blended cart cost calculator.");
   lines.push("This estimate is not a binding quotation.");
 
@@ -157,6 +178,6 @@ function enquiryMailto(details, quote, config) {
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     validateEnquiry, buildEnquiryText, buildEnquiryPayload,
-    enquiryEndpoint, enquiryMailto, eventTypeById,
+    enquiryEndpoint, enquiryMailto, eventTypeById, isoDate,
   };
 }

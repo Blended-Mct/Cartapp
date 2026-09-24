@@ -26,6 +26,7 @@ Amounts are in Omani Rials to 3 decimals (baisa): `1` is 1.000 OMR, `0.25` is
 | The service fee every booking starts with | `serviceFee` |
 | Smallest order you accept | `minimumCups` |
 | Hours included, and the extra-hour rate | `duration` |
+| Wording shown on the page and in the email | `messages` |
 | Areas you cover and their travel charges | `locations` |
 | The three carts and what each one serves | `carts` |
 | Menu items and their per-cup prices | `menu` |
@@ -40,7 +41,8 @@ it appears on the form automatically.
 
 ### How a price is built
 
-1. **Service fee** — charged on every booking, covering the included hours.
+1. **Service fee** — charged on every booking, covering the included hours
+   (currently 3; each hour after that is 5).
 2. **The menu** — each item's cups × its `pricePerCup`. Quantities are already
    held at or above each item's minimum by the counters.
 3. **Per-cup extras** — counted on the cups they apply to.
@@ -93,6 +95,22 @@ so they inherit the counters' minimums automatically.
 
 `flatExtras` are charged once, whatever the order size.
 
+### What the customer must fill in
+
+The **event date** is asked for first and is required — it is the thing that
+decides whether you are free at all. The date picker will not offer a past date,
+and a past one typed in is refused.
+
+Also required: name, kind of event (company events additionally ask the company
+name) and a phone number. Email and notes are optional. Error messages appear
+only once someone has pressed Send, and then clear as each field is put right.
+
+### Flavours and toppings
+
+`messages.chooseLater` is shown under the menu, repeated on the thank-you panel,
+and included at the foot of the email, so nobody stalls trying to pick flavours
+before booking. Change the wording there and it changes in all three places.
+
 ### Areas
 
 ```js
@@ -116,8 +134,9 @@ delete its block from the list.
 
 **Read this once — there is a step only you can do.**
 
-A plain website cannot send email by itself. When a customer presses *Send my
-enquiry*, the form hands the enquiry to **formsubmit.co**, a free relay that
+Pressing *Send my enquiry* emails you directly; that is the default and the
+customer does nothing else. Behind it, because a plain website cannot send mail
+by itself, the form hands the enquiry to **formsubmit.co**, a free relay that
 emails it to the address in `enquiry.email` (currently `Blended.mct@gmail.com`).
 
 ### Switching it on
@@ -131,9 +150,10 @@ Until step 2 is done, enquiries are *not* delivered.
 
 ### What arrives
 
-One email per enquiry, containing the customer's name, event type, company (for
-company events), phone, email and date if given, their notes, and the full
-itemised estimate down to the total and the deposit figure.
+One email per enquiry, containing the event date, the customer's name, event
+type, company (for company events), phone, their email and notes if given, and
+the full itemised estimate down to the total and the deposit figure. It closes
+with the note that flavours and toppings are settled after confirmation.
 
 ### If the relay is ever down
 
@@ -250,6 +270,8 @@ the same names.
   **Enquiries by email** above.
 - Customers can print the estimate or save it as a PDF; only the estimate panel
   is printed, not the form.
+- Flavours and toppings are deliberately not asked for — they are settled after
+  the booking is confirmed.
 - The page follows the visitor's light/dark preference, with a manual toggle in
   the header.
 - The display font (Baloo 2, chosen to echo the Blended wordmark) is served from

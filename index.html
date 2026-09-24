@@ -40,26 +40,38 @@
     </p>
     <p class="minimum-banner" id="minimumBanner"></p>
 
-    <!-- 1. Cart -->
+    <!-- 1. Date -->
     <fieldset class="field">
-      <legend class="label">1. Choose your cart</legend>
+      <legend class="label">1. When is your event?</legend>
+      <div class="input-group input-group-date">
+        <label for="eventDate"><span>Event date</span></label>
+        <input type="date" id="eventDate" name="eventDate" required>
+        <p class="hint" id="dateHint"></p>
+        <p class="error" id="errEventDate"></p>
+      </div>
+    </fieldset>
+
+    <!-- 2. Cart -->
+    <fieldset class="field">
+      <legend class="label">2. Choose your cart</legend>
       <div class="cart-options" id="cartOptions" role="radiogroup"></div>
     </fieldset>
 
     <!-- 2. Menu -->
     <fieldset class="field">
       <legend class="label">
-        2. Your menu
+        3. Your menu
         <span class="label-note">how many cups of each</span>
       </legend>
       <p class="field-note" id="menuMinimumNote"></p>
+      <p class="choose-later" id="chooseLaterNote"></p>
       <div id="menu"></div>
       <p class="cups-total" id="cupsTotal"></p>
     </fieldset>
 
     <!-- 3. Event -->
     <fieldset class="field">
-      <legend class="label">3. Your event</legend>
+      <legend class="label">4. Where and how long</legend>
       <div class="grid-2">
         <div class="input-group">
           <label for="location"><span>Where is it?</span></label>
@@ -78,13 +90,13 @@
 
     <!-- 4. Extras -->
     <fieldset class="field">
-      <legend class="label">4. Extras <span class="label-note">optional</span></legend>
+      <legend class="label">5. Extras <span class="label-note">optional</span></legend>
       <div class="addons" id="extras"></div>
     </fieldset>
 
     <!-- 5. Send it -->
     <fieldset class="field" id="enquiryFields">
-      <legend class="label">5. Send us your enquiry</legend>
+      <legend class="label">6. Send us your enquiry</legend>
       <p class="field-note">
         We will come back to you with a confirmed quote. Nothing is booked yet.
       </p>
@@ -125,11 +137,6 @@
           <p class="error" id="errEmail"></p>
         </div>
 
-        <div class="input-group">
-          <label for="eventDate"><span>Event date</span>
-            <span class="label-note">optional</span></label>
-          <input type="date" id="eventDate" name="eventDate">
-        </div>
       </div>
 
       <div class="input-group input-group-wide">

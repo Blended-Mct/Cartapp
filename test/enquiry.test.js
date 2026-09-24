@@ -18,7 +18,7 @@ const cfg = {
   serviceFee: 30,
   serviceFeeLabel: "Cart service fee",
   minimumCups: 50,
-  duration: { includedHours: 2, extraHourRate: 5, maxHours: 10 },
+  duration: { includedHours: 3, extraHourRate: 5, maxHours: 10 },
   locations: [
     { id: "muscat", name: "Muscat", charge: 0 },
     { id: "barka", name: "Barka", charge: 15 },
@@ -31,6 +31,7 @@ const cfg = {
   flatExtras: [],
   tax: { percent: 0, label: "VAT" },
   deposit: { percent: 30, label: "Deposit" },
+  messages: { chooseLater: "Flavours and toppings are chosen later." },
   enquiry: {
     email: "orders@example.com",
     mode: "formsubmit",
@@ -55,7 +56,7 @@ const quote = calculateQuote(
 const emptyOrder = calculateQuote(
   {
     cartId: "icecream", quantities: {},
-    locationId: "muscat", hours: 2, cupExtras: [], flatExtras: [],
+    locationId: "muscat", hours: 3, cupExtras: [], flatExtras: [],
   },
   cfg
 );
@@ -70,7 +71,10 @@ const good = {
   notes: "Rooftop venue, no mains power.",
 };
 
-const check = (over = {}) => validateEnquiry({ ...good, ...over }, quote, cfg);
+/* A fixed "today", so the date tests do not drift. */
+const TODAY = new Date(2026, 8, 24); // 24 September 2026
+const check = (over = {}) =>
+  validateEnquiry({ ...good, ...over }, quote, cfg, TODAY);
 
 /* --- What we insist on -------------------------------------------------- */
 
@@ -78,6 +82,19 @@ test("a complete enquiry passes", () => {
   const { ok, errors } = check();
   assert.equal(ok, true);
   assert.deepEqual(errors, {});
+});
+
+test("the event date is required", () => {
+  assert.match(check({ eventDate: "" }).errors.eventDate, /date of your event/);
+  assert.match(check({ eventDate: "soon" }).errors.eventDate, /choose a date/);
+});
+
+test("a past date is refused, today and future dates are accepted", () => {
+  assert.match(check({ eventDate: "2026-09-23" }).errors.eventDate, /has passed/);
+  assert.match(check({ eventDate: "2025-12-31" }).errors.eventDate, /has passed/);
+  assert.equal(check({ eventDate: "2026-09-24" }).ok, true); // today
+  assert.equal(check({ eventDate: "2026-09-25" }).ok, true);
+  assert.equal(check({ eventDate: "2027-01-01" }).ok, true);
 });
 
 test("a name is required", () => {
@@ -125,7 +142,7 @@ test("an order raised to the minimum by the counters sends fine", () => {
   const raised = calculateQuote(
     {
       cartId: "icecream", quantities: { gelato: 20 },
-      locationId: "muscat", hours: 2, cupExtras: [], flatExtras: [],
+      locationId: "muscat", hours: 3, cupExtras: [], flatExtras: [],
     },
     cfg
   );
@@ -146,20 +163,24 @@ test("the email carries the customer, the booking and the estimate", () => {
   assert.match(text, /Location: Barka/);
   assert.match(text, /Total cups: 100/);
   assert.match(text, /Gelato/);
-  assert.match(text, /TOTAL: OMR 150\.000/);
-  assert.match(text, /Deposit \(30%\): OMR 45\.000/);
+  assert.match(text, /TOTAL: OMR 145\.000/);
+  assert.match(text, /Deposit \(30%\): OMR 43\.500/);
   assert.match(text, /Rooftop venue, no mains power\./);
 });
 
 test("empty optional fields are left out of the email rather than left blank", () => {
   const text = buildEnquiryText(
-    { ...good, email: "", eventDate: "", notes: "", companyName: "" }, quote, cfg
+    { ...good, email: "", notes: "", companyName: "" }, quote, cfg
   );
   assert.equal(/Email:/.test(text), false);
-  assert.equal(/Event date:/.test(text), false);
   assert.equal(/Company:/.test(text), false);
   assert.equal(/NOTES FROM THE CUSTOMER/.test(text), false);
-  assert.match(text, /Phone: 9123 4567/); // the required ones are still there
+  assert.match(text, /Phone: 9123 4567/);      // the required ones are still there
+  assert.match(text, /Event date: 2026-11-14/); // the date is never optional
+});
+
+test("the email says flavours and toppings come later", () => {
+  assert.match(buildEnquiryText(good, quote, cfg), /chosen later/);
 });
 
 test("a company enquiry names the company", () => {
@@ -178,8 +199,8 @@ test("the posted payload carries the fields and the written enquiry", () => {
   assert.equal(payload.cart, "Ice Cream Cart");
   assert.equal(payload.location, "Barka");
   assert.equal(payload.total_cups, "100");
-  assert.equal(payload.total_estimate, "OMR 150.000");
-  assert.match(payload.enquiry, /TOTAL: OMR 150\.000/);
+  assert.equal(payload.total_estimate, "OMR 145.000");
+  assert.match(payload.enquiry, /TOTAL: OMR 145\.000/);
 });
 
 test("values are trimmed before they are sent", () => {
@@ -208,7 +229,7 @@ test("the mailto fallback addresses the business and carries the enquiry", () =>
   assert.ok(link.startsWith("mailto:orders@example.com?"));
   assert.match(link, /subject=New%20cart%20enquiry/);
   assert.match(decodeURIComponent(link), /Name: Aisha Al Said/);
-  assert.match(decodeURIComponent(link), /TOTAL: OMR 150\.000/);
+  assert.match(decodeURIComponent(link), /TOTAL: OMR 145\.000/);
 });
 
 test("eventTypeById returns null rather than guessing", () => {
