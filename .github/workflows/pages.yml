@@ -55,6 +55,10 @@ jobs:
       # Pages is already switched on; `enablement` is left off because the
       # workflow token is not allowed to create the site anyway.
       - uses: actions/configure-pages@v5
+      # If a deploy ever fails, start a NEW run (or "Re-run all jobs").
+      # "Re-run failed jobs" uploads a second artifact with the same name into
+      # the same run, and the deploy then refuses with "Multiple artifacts
+      # named github-pages were unexpectedly found".
       - uses: actions/upload-pages-artifact@v3
         with:
           path: .

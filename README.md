@@ -286,6 +286,13 @@ The default is currently the working branch. To make `main` the default —
 tidier, and what most people expect — go to **Settings → General → Default
 branch**. The workflow keeps working either way.
 
+### If a deploy fails
+
+Start a **new** run, or use **Re-run all jobs**. Do not use *Re-run failed
+jobs*: it uploads a second artifact with the same name into the same run, and
+the deploy then refuses with *"Multiple artifacts named github-pages were
+unexpectedly found"* — a worse failure than the one being retried.
+
 Netlify, Cloudflare Pages and Vercel also work — drag the folder in, no
 configuration needed. To put it on your existing website, upload these files to
 any folder on your host, or embed it in a page with an iframe:
