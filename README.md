@@ -260,23 +260,31 @@ The site is published to **GitHub Pages** by
 push to `main`. The tests run first and the deploy waits on them, so a mistake in
 the prices stops the deploy rather than reaching customers.
 
-### Switching Pages on (once)
+The site is live at **https://kifahkruce-oss.github.io/Cartapp/**
 
-The workflow tries to enable Pages itself, but GitHub refuses that from a
-workflow token — *"Resource not accessible by integration"*. It has to be done
-by hand, once:
+### Two things that had to be done by hand
 
-**Settings → Pages → Build and deployment → Source: GitHub Actions**
+Both are already done; this is here in case the repository is ever rebuilt.
 
-Then re-run the workflow from the Actions tab (or push anything to `main`). The
-site appears at `https://kifahkruce-oss.github.io/Cartapp/` a minute later, and
-every push to `main` updates it from then on.
+1. **The repository must be public**, or Pages needs a paid plan.
+2. **Settings → Pages → Source: GitHub Actions.** The workflow cannot switch
+   this on itself: GitHub refuses it from a workflow token with *"Resource not
+   accessible by integration"*.
 
-Alternatively, set *Source* to *Deploy from a branch* → `main` → `/ (root)`.
-That publishes without the workflow, and so without the tests as a gate.
+### Only the default branch can publish
 
-The repository's default branch is still the working branch it was built on.
-To make `main` the default: **Settings → General → Default branch**.
+GitHub allows the `github-pages` environment to be deployed **only from the
+repository's default branch**. A deploy from any other branch is rejected before
+the job starts — a one-second failure with no logs, easily misread as a broken
+build.
+
+The workflow therefore runs on a push to either branch and skips the deploy
+unless it is on the default branch, so nothing fails confusingly. Whichever
+branch is the default is the one that publishes.
+
+The default is currently the working branch. To make `main` the default —
+tidier, and what most people expect — go to **Settings → General → Default
+branch**. The workflow keeps working either way.
 
 Netlify, Cloudflare Pages and Vercel also work — drag the folder in, no
 configuration needed. To put it on your existing website, upload these files to

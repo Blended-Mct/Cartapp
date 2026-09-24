@@ -1,14 +1,20 @@
-# Publishes the calculator to GitHub Pages on every push to main.
+# Publishes the calculator to GitHub Pages.
 #
-# `configure-pages` with `enablement: true` switches Pages on for the
-# repository the first time this runs, so there is nothing to click in
-# Settings. The site is static — there is no build step, the files are
-# uploaded as they are.
+# GitHub only lets the `github-pages` environment be deployed from the
+# repository's DEFAULT branch. Anything else is rejected before the job even
+# starts — a one-second failure with no logs, which is easy to misread as a
+# broken build. So this runs on a push to either branch and the deploy step
+# checks it is on the default branch, skipping quietly rather than failing
+# when it is not. Whichever branch is the default is the one that publishes.
+#
+# The site is static: no build step, the files are uploaded as they are.
 name: Publish to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - claude/business-cost-calculator-5p12p1
   workflow_dispatch:
 
 permissions:
@@ -36,15 +42,17 @@ jobs:
   deploy:
     name: Deploy
     needs: test
+    # Only the default branch may deploy to the github-pages environment.
+    if: github.ref_name == github.event.repository.default_branch
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      # Pages is already switched on; `enablement` is left off because the
+      # workflow token is not allowed to create the site anyway.
       - uses: actions/configure-pages@v5
-        with:
-          enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: .
