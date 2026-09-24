@@ -146,7 +146,28 @@ emails it to the address in `enquiry.email` (currently `Blended.mct@gmail.com`).
    address. **Click that link.**
 3. Enquiries now arrive in your inbox. Do this once; it does not expire.
 
-Until step 2 is done, enquiries are *not* delivered.
+Until step 2 is done, enquiries are *not* delivered, and the form will say so
+rather than pretending they were. That first test enquiry is expected to report
+*"We could not confirm that was sent"* — it is what triggers the activation
+email. After you click the link, sending works normally.
+
+No relay can skip this: they all make you prove the address is yours before they
+will send to it.
+
+### How it is sent
+
+The enquiry is posted as an ordinary form into a hidden frame, so the customer
+never leaves the page. It is deliberately **not** a `fetch`: a page is commonly
+allowed to post a form to another site while being forbidden from fetching one,
+so the form post works in places a fetch is refused outright — which is why the
+first version of this failed.
+
+Knowing it arrived takes one more step. A hidden frame reports a successful load
+even for an error page, so the relay is asked (`_next`) to send the frame back to
+`assets/relay-ok.html`, a page on this site. Only then can the frame's address be
+read at all, and reading it is the proof. Anything else — the relay's error or
+activation page, a dead network — leaves the frame somewhere unreadable and
+counts as not sent. Do not move or rename that file.
 
 ### What arrives
 

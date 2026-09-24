@@ -7,7 +7,7 @@ const assert = require("node:assert/strict");
 const { test } = require("node:test");
 const { calculateQuote } = require("../assets/js/calculator.js");
 const {
-  validateEnquiry, buildEnquiryText, buildEnquiryPayload,
+  validateEnquiry, buildEnquiryText, buildEnquiryPayload, buildRelayFields,
   enquiryEndpoint, enquiryMailto, eventTypeById,
 } = require("../assets/js/enquiry.js");
 
@@ -213,11 +213,30 @@ test("values are trimmed before they are sent", () => {
 
 /* --- Where it is sent --------------------------------------------------- */
 
-test("formsubmit mode posts to the relay for the configured address", () => {
-  assert.equal(
-    enquiryEndpoint(cfg),
-    "https://formsubmit.co/ajax/orders%40example.com"
-  );
+test("formsubmit mode posts to the plain form endpoint, not the fetch one", () => {
+  /* The plain endpoint takes an ordinary form post, which is permitted in
+     places a cross-origin fetch is blocked outright. */
+  assert.equal(enquiryEndpoint(cfg), "https://formsubmit.co/orders%40example.com");
+  assert.equal(enquiryEndpoint(cfg).includes("/ajax/"), false);
+});
+
+test("the relay fields carry the enquiry and the relay's own settings", () => {
+  const fields = buildRelayFields(good, quote, cfg);
+  /* Everything the email needs... */
+  assert.equal(fields.name, "Aisha Al Said");
+  assert.equal(fields.phone, "9123 4567");
+  assert.equal(fields.event_date, "2026-11-14");
+  assert.match(fields.enquiry, /TOTAL: OMR 145\.000/);
+  /* ...plus the underscore-prefixed settings the relay reads. */
+  assert.equal(fields._subject, "New cart enquiry");
+  assert.equal(fields._template, "table");
+  assert.equal(fields._captcha, "false");
+});
+
+test("every relay field is a string, as a form post requires", () => {
+  Object.entries(buildRelayFields(good, quote, cfg)).forEach(([key, value]) => {
+    assert.equal(typeof value, "string", `${key} should be a string`);
+  });
 });
 
 test("mailto mode has no endpoint to post to", () => {

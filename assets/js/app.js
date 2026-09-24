@@ -51,6 +51,8 @@
     eventDate: $("eventDate"),
     dateHint: $("dateHint"),
     chooseLaterNote: $("chooseLaterNote"),
+    relayForm: $("relayForm"),
+    relayFrame: $("relayFrame"),
   };
 
   let selectedCartId = cfg.carts[0].id;
@@ -511,28 +513,86 @@
 
     setSending(true);
     try {
-      const payload = buildEnquiryPayload(details, quote, cfg);
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({
-          ...payload,
-          _subject: cfg.enquiry.subject,
-          _template: "table",
-          _captcha: "false",
-        }),
-      });
-
-      if (!response.ok) throw new Error(`Relay returned ${response.status}`);
+      await postToRelay(endpoint, buildRelayFields(details, quote, cfg));
       showSent(details);
     } catch (err) {
       offerMailtoFallback(
         details, quote,
-        "We could not send that just now — sorry."
+        "We could not confirm that was sent — sorry."
       );
     } finally {
       setSending(false);
     }
+  }
+
+  /* The page the relay sends the frame back to once it has the enquiry.
+     It belongs to this site, so we can read the frame's address and be sure. */
+  function relayConfirmUrl() {
+    return new URL("assets/relay-ok.html", window.location.href).href;
+  }
+
+  /* -----------------------------------------------------------------------
+     Posts the enquiry as an ordinary form, into a hidden frame, so the
+     customer never leaves the page.
+
+     This is deliberately not a fetch. A page is commonly allowed to post a
+     form to another site while being forbidden from fetching it, so the post
+     goes through where a fetch is refused outright.
+
+     Knowing it worked takes care. The frame fires a load event even for an
+     error page, so a load on its own proves nothing. Instead the relay is
+     asked to send the frame back to a page on this site once it has the
+     enquiry: only then can the frame's address be read at all, and reading it
+     is the proof. Anything else — the relay's own error or activation page, a
+     dead network — leaves the frame on a foreign address we cannot read, and
+     counts as not sent.
+  --------------------------------------------------------------------- */
+  function postToRelay(endpoint, fields) {
+    return new Promise((resolve, reject) => {
+      const confirmUrl = relayConfirmUrl();
+      const form = el.relayForm;
+      form.action = endpoint;
+      form.innerHTML = "";
+
+      Object.entries({ ...fields, _next: confirmUrl }).forEach(([name, value]) => {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = name;
+        input.value = value == null ? "" : String(value);
+        form.appendChild(input);
+      });
+
+      let settled = false;
+      const finish = (fn) => (arg) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        el.relayFrame.removeEventListener("load", onLoad);
+        fn(arg);
+      };
+
+      /* The frame may load more than once on the way — the relay's own page
+         first, then ours. Only our page settles it; the rest are ignored and
+         the timeout has the last word. */
+      function onLoad() {
+        let here = null;
+        try {
+          here = el.relayFrame.contentWindow.location.href;
+        } catch (err) {
+          return; // still on the relay's domain, so not delivered yet
+        }
+        if (here && here.split("?")[0].split("#")[0] === confirmUrl.split("?")[0]) {
+          finish(resolve)();
+        }
+      }
+
+      const timer = setTimeout(
+        finish(reject), 15000, new Error("Relay did not confirm")
+      );
+
+      el.relayFrame.addEventListener("load", onLoad);
+      form.submit();
+    });
   }
 
   /* --- Theme ----------------------------------------------------------- */

@@ -155,12 +155,29 @@ function buildEnquiryPayload(details, quote, config) {
   };
 }
 
-/* Where the enquiry is sent, given the configured mode. */
+/* Where the enquiry is posted, given the configured mode.
+
+   This is the plain form endpoint, not the /ajax one, because the enquiry is
+   sent as an ordinary form post rather than a fetch. A page is often allowed
+   to post a form to another site while being forbidden from fetching it — a
+   content security policy typically permits `form-action` far more widely than
+   `connect-src` — so the form post works in places the fetch simply could not. */
 function enquiryEndpoint(config) {
   if (config.enquiry.mode === "formsubmit") {
-    return `https://formsubmit.co/ajax/${encodeURIComponent(config.enquiry.email)}`;
+    return `https://formsubmit.co/${encodeURIComponent(config.enquiry.email)}`;
   }
   return null;
+}
+
+/* Everything posted to the relay: the enquiry itself plus the relay's own
+   settings, which it reads from fields beginning with an underscore. */
+function buildRelayFields(details, quote, config) {
+  return {
+    ...buildEnquiryPayload(details, quote, config),
+    _subject: config.enquiry.subject || "New cart enquiry",
+    _template: "table",
+    _captcha: "false",
+  };
 }
 
 /* The mailto: link used in "mailto" mode, and as the fallback when a send
@@ -178,6 +195,6 @@ function enquiryMailto(details, quote, config) {
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     validateEnquiry, buildEnquiryText, buildEnquiryPayload,
-    enquiryEndpoint, enquiryMailto, eventTypeById, isoDate,
+    enquiryEndpoint, enquiryMailto, buildRelayFields, eventTypeById, isoDate,
   };
 }
