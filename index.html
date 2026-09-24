@@ -3,9 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Cart Hire Cost Calculator</title>
-<meta name="description" content="Instant cost estimate for hiring our coffee and ice cream catering carts.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☕</text></svg>">
+<title>Blended — Cart Hire Cost Calculator</title>
+<meta name="description" content="Instant cost estimate for hiring a Blended ice cream or shakes cart for your event.">
+<meta name="theme-color" content="#1d6828">
+<link rel="icon" href="assets/img/blended-logo.png">
+<link rel="stylesheet" href="assets/css/font.css">
 <link rel="stylesheet" href="assets/css/styles.css">
 </head>
 <body>
@@ -13,11 +15,13 @@
 <header class="site-header">
   <div class="wrap header-inner">
     <div>
-      <p class="brand" data-business-name>Your Catering Co.</p>
-      <p class="tagline" data-business-tagline>Coffee &amp; ice cream carts for events</p>
+      <img class="brand-logo" src="assets/img/blended-logo.png" alt="Blended"
+           onerror="this.remove()">
+      <p class="tagline" data-business-tagline>Ice cream · drinks · shakes</p>
     </div>
-    <button type="button" class="theme-toggle" id="themeToggle" aria-label="Switch colour theme">
-      <span aria-hidden="true">◐</span>
+    <button type="button" class="theme-toggle" id="themeToggle" aria-label="Switch to dark theme">
+      <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round" aria-hidden="true"></svg>
     </button>
   </div>
 </header>
@@ -26,6 +30,10 @@
 
   <!-- ------------------------------------------------ the customer's form -->
   <form class="panel form" id="quoteForm" novalidate>
+    <figure class="hero">
+      <img src="assets/img/blended-shopfront.webp" alt="" width="793" height="581">
+    </figure>
+
     <h1 class="page-title">What will my cart cost?</h1>
     <p class="page-intro">
       Tell us about your event and the price updates as you type.
@@ -129,7 +137,7 @@
 
 <footer class="site-footer">
   <p class="wrap">
-    <span data-business-name>Your Catering Co.</span> — prices shown are an estimate,
+    <span data-business-name>Blended</span> — prices shown are an estimate,
     not a binding quotation.
   </p>
 </footer>

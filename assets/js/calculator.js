@@ -2,8 +2,16 @@
    CALCULATOR  —  pure pricing logic, no DOM. Edit prices in pricing-config.js.
    ========================================================================== */
 
+/* Rounds to a number of decimal places. Rials use 3 (baisa), most
+   currencies use 2 — set `decimals` in pricing-config.js. */
+function roundTo(n, decimals) {
+  const f = Math.pow(10, Number.isInteger(decimals) ? decimals : 2);
+  return Math.round((n + Number.EPSILON) * f) / f;
+}
+
+/* Kept for callers that just want two decimals. */
 function round2(n) {
-  return Math.round((n + Number.EPSILON) * 100) / 100;
+  return roundTo(n, 2);
 }
 
 function clamp(n, min, max) {
@@ -41,6 +49,8 @@ function addonAppliesTo(addon, packageId) {
 /* Which surcharges apply to the chosen date. */
 function activeSurcharges(dateStr, isHoliday, config) {
   const s = config.surcharges;
+  // Oman's weekend is Friday & Saturday; set `weekendDays` in the config.
+  const weekendDays = s.weekendDays || [0, 6];
   const out = [];
   if (dateStr) {
     // Parse as a local date so the weekday matches what the customer picked.
@@ -48,7 +58,7 @@ function activeSurcharges(dateStr, isHoliday, config) {
     const date = new Date(y, m - 1, d);
     if (!Number.isNaN(date.getTime())) {
       const day = date.getDay();
-      if (s.weekendPercent > 0 && (day === 0 || day === 6)) {
+      if (s.weekendPercent > 0 && weekendDays.includes(day)) {
         out.push({ label: "Weekend surcharge", percent: s.weekendPercent });
       }
       if (s.peakMonthPercent > 0 && (s.peakMonths || []).includes(m)) {
@@ -76,6 +86,7 @@ function calculateQuote(input, config) {
   const pkg =
     config.packages.find((p) => p.id === input.packageId) || config.packages[0];
   const L = config.limits;
+  const round = (n) => roundTo(n, config.decimals);
 
   const guests = clamp(Math.round(input.guests), L.minGuests, L.maxGuests);
   const hours = clamp(input.hours, L.minHours, L.maxHours);
@@ -100,7 +111,7 @@ function calculateQuote(input, config) {
   });
 
   /* 2. Extra service hours ---------------------------------------------- */
-  const extraHours = round2(Math.max(0, hours - pkg.includedHours));
+  const extraHours = roundTo(Math.max(0, hours - pkg.includedHours), 2);
   if (extraHours > 0) {
     lines.push({
       label: "Additional service hours",
@@ -179,7 +190,7 @@ function calculateQuote(input, config) {
     lines.push({
       label: "Travel",
       detail:
-        `${round2(billableDistance)} ${t.unit} beyond the free ${t.freeRadius} ${t.unit} radius` +
+        `${roundTo(billableDistance, 2)} ${t.unit} beyond the free ${t.freeRadius} ${t.unit} radius` +
         (t.chargeRoundTrip ? ` × 2 (round trip) × ${t.perUnit}` : ` × ${t.perUnit}`),
       amount: billableDistance * multiplier * t.perUnit,
       surchargeable: false,
@@ -187,24 +198,24 @@ function calculateQuote(input, config) {
   }
 
   /* 9. Subtotal, discount, minimum spend, tax ---------------------------- */
-  let subtotal = round2(lines.reduce((sum, l) => sum + l.amount, 0));
+  let subtotal = round(lines.reduce((sum, l) => sum + l.amount, 0));
 
   const discountTier = (config.discounts || [])
     .filter((d) => subtotal >= d.minSubtotal)
     .sort((a, b) => b.percent - a.percent)[0];
 
   const discount = discountTier
-    ? { label: discountTier.label, amount: round2(subtotal * (discountTier.percent / 100)) }
+    ? { label: discountTier.label, amount: round(subtotal * (discountTier.percent / 100)) }
     : null;
 
-  let afterDiscount = round2(subtotal - (discount ? discount.amount : 0));
+  let afterDiscount = round(subtotal - (discount ? discount.amount : 0));
 
   let minimumTopUp = null;
   if (config.fees.minimumSpend > 0 && afterDiscount < config.fees.minimumSpend) {
     minimumTopUp = {
       label: "Minimum booking adjustment",
       detail: `Our minimum booking is ${config.fees.minimumSpend}`,
-      amount: round2(config.fees.minimumSpend - afterDiscount),
+      amount: round(config.fees.minimumSpend - afterDiscount),
     };
     afterDiscount = config.fees.minimumSpend;
   }
@@ -213,17 +224,17 @@ function calculateQuote(input, config) {
     config.tax.percent > 0
       ? {
           label: `${config.tax.label} (${config.tax.percent}%)`,
-          amount: round2(afterDiscount * (config.tax.percent / 100)),
+          amount: round(afterDiscount * (config.tax.percent / 100)),
         }
       : null;
 
-  const total = round2(afterDiscount + (tax ? tax.amount : 0));
+  const total = round(afterDiscount + (tax ? tax.amount : 0));
 
   const deposit =
     config.deposit.percent > 0
       ? {
           label: `${config.deposit.label} (${config.deposit.percent}%)`,
-          amount: round2(total * (config.deposit.percent / 100)),
+          amount: round(total * (config.deposit.percent / 100)),
         }
       : null;
 
@@ -250,18 +261,20 @@ function calculateQuote(input, config) {
     package: pkg,
     guests, hours, staff, distance, servings,
     recommendedStaff: needed,
-    lines: lines.map((l) => ({ ...l, amount: round2(l.amount) })),
+    lines: lines.map((l) => ({ ...l, amount: round(l.amount) })),
     subtotal,
     discount,
     minimumTopUp,
     tax,
     total,
     deposit,
-    perGuest: guests > 0 ? round2(total / guests) : 0,
+    perGuest: guests > 0 ? round(total / guests) : 0,
     warnings,
   };
 }
 
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { calculateQuote, estimateServings, recommendedStaff, round2, clamp };
+  module.exports = {
+    calculateQuote, estimateServings, recommendedStaff, roundTo, round2, clamp,
+  };
 }

@@ -1,64 +1,83 @@
 /* =============================================================================
-   Cart hire cost calculator — styles
-   Colours live as tokens on :root so the whole look changes from one place.
+   Blended — cart hire cost calculator
+   Colours are taken from the Blended logo and shopfront illustration:
+     deep green  #1d6828   logo wordmark
+     leaf green  #4ba565   shopfront
+     coral       #e88687   interior tiles
+     terracotta  #db6a2e
+     cream       #e7cf9c / #f3e6c8
+     off-white   #f5f8f3
+   Every colour is a token below, so the whole look changes from one place.
    ========================================================================== */
 
 :root {
-  --bg: #f7f3ee;
+  --bg: #f4f7f1;
   --surface: #ffffff;
-  --surface-2: #faf7f3;
-  --border: #e5dcd1;
-  --text: #2a211b;
-  --text-muted: #6f6257;
-  --accent: #8a5a30;
-  --accent-soft: #f3e6d8;
+  --surface-2: #fbfcf8;
+  --border: #dfe8db;
+  --text: #1b2a1f;
+  --text-muted: #5d6f60;
+  --accent: #1d6828;
+  --accent-hover: #175621;
+  --accent-soft: #e6f1e4;
   --accent-text: #ffffff;
-  --good: #2f6b46;
-  --warn-bg: #fdf3e0;
-  --warn-border: #e8cf9d;
-  --warn-text: #7a5410;
-  --radius: 14px;
-  --radius-sm: 10px;
-  --shadow: 0 1px 2px rgba(42, 33, 27, .06), 0 8px 24px rgba(42, 33, 27, .07);
-  --maxw: 1080px;
+  --leaf: #4ba565;
+  --coral: #e88687;
+  --cream: #f3e6c8;
+  --good: #1d6828;
+  --warn-bg: #fdf1e7;
+  --warn-border: #f0c9a9;
+  --warn-text: #a9521f;
+  --radius: 18px;
+  --radius-sm: 12px;
+  --shadow: 0 1px 2px rgba(27, 42, 31, .05), 0 10px 28px rgba(27, 42, 31, .07);
+  --maxw: 1100px;
+  --font-display: "Baloo 2", ui-rounded, "Segoe UI", system-ui, sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #17120f;
-    --surface: #211a16;
-    --surface-2: #1a1512;
-    --border: #3a2e26;
-    --text: #f2e9e1;
-    --text-muted: #b3a294;
-    --accent: #d99a5b;
-    --accent-soft: #33261c;
-    --accent-text: #1b1310;
-    --good: #7fc79b;
-    --warn-bg: #2e2313;
-    --warn-border: #5c4620;
-    --warn-text: #e8c98a;
-    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px rgba(0, 0, 0, .35);
+    --bg: #0f1711;
+    --surface: #182219;
+    --surface-2: #131c15;
+    --border: #2b3a2d;
+    --text: #eaf3e8;
+    --text-muted: #9fb3a3;
+    --accent: #5fbd73;
+    --accent-hover: #74ca86;
+    --accent-soft: #1e2e21;
+    --accent-text: #0b140d;
+    --leaf: #4ba565;
+    --coral: #e88687;
+    --cream: #222d1f;
+    --good: #7fd193;
+    --warn-bg: #2d2114;
+    --warn-border: #5a3f24;
+    --warn-text: #e9b98d;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 10px 28px rgba(0, 0, 0, .35);
   }
 }
 
 :root[data-theme="dark"] {
-  --bg: #17120f;
-  --surface: #211a16;
-  --surface-2: #1a1512;
-  --border: #3a2e26;
-  --text: #f2e9e1;
-  --text-muted: #b3a294;
-  --accent: #d99a5b;
-  --accent-soft: #33261c;
-  --accent-text: #1b1310;
-  --good: #7fc79b;
-  --warn-bg: #2e2313;
-  --warn-border: #5c4620;
-  --warn-text: #e8c98a;
-  --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px rgba(0, 0, 0, .35);
+  --bg: #0f1711;
+  --surface: #182219;
+  --surface-2: #131c15;
+  --border: #2b3a2d;
+  --text: #eaf3e8;
+  --text-muted: #9fb3a3;
+  --accent: #5fbd73;
+  --accent-hover: #74ca86;
+  --accent-soft: #1e2e21;
+  --accent-text: #0b140d;
+  --leaf: #4ba565;
+  --coral: #e88687;
+  --cream: #222d1f;
+  --good: #7fd193;
+  --warn-bg: #2d2114;
+  --warn-border: #5a3f24;
+  --warn-text: #e9b98d;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 10px 28px rgba(0, 0, 0, .35);
 }
-
 * { box-sizing: border-box; }
 
 body {
@@ -88,20 +107,36 @@ body {
   display: flex; align-items: center; justify-content: space-between;
   gap: 16px; padding-top: 16px; padding-bottom: 16px;
 }
-.brand { margin: 0; font-size: 1.05rem; font-weight: 650; letter-spacing: -.01em; }
-.tagline { margin: 2px 0 0; font-size: .875rem; color: var(--text-muted); }
+.brand-logo {
+  display: block;
+  height: 34px;
+  width: auto;
+}
+/* The deep-green wordmark needs a lift against a dark background. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .brand-logo { filter: brightness(1.5) saturate(1.1); }
+}
+:root[data-theme="dark"] .brand-logo { filter: brightness(1.5) saturate(1.1); }
+/* Shown only if the logo image is missing. */
+.brand {
+  margin: 0; font-family: var(--font-display);
+  font-size: 1.35rem; font-weight: 800; color: var(--accent); letter-spacing: -.01em;
+}
+.tagline { margin: 4px 0 0; font-size: .85rem; color: var(--text-muted); }
 
 .theme-toggle {
   flex: none;
+  display: grid; place-items: center;
   width: 40px; height: 40px;
+  padding: 0;
   border: 1px solid var(--border);
   border-radius: 50%;
   background: var(--surface-2);
-  color: var(--text);
-  font-size: 1.1rem;
+  color: var(--text-muted);
   cursor: pointer;
 }
-.theme-toggle:hover { border-color: var(--accent); }
+.theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
+.theme-toggle svg { width: 18px; height: 18px; display: block; }
 
 /* --- Layout ---------------------------------------------------------- */
 .layout {
@@ -126,9 +161,30 @@ body {
 }
 @media (min-width: 640px) { .panel { padding: 28px; } }
 
-.page-title { margin: 0 0 6px; font-size: 1.6rem; letter-spacing: -.02em; }
-@media (min-width: 640px) { .page-title { font-size: 1.9rem; } }
+.page-title {
+  margin: 0 0 6px;
+  font-family: var(--font-display);
+  font-size: 1.8rem; font-weight: 800; letter-spacing: -.01em; line-height: 1.15;
+}
+@media (min-width: 640px) { .page-title { font-size: 2.15rem; } }
 .page-intro { margin: 0 0 24px; color: var(--text-muted); }
+
+/* --- Hero illustration ------------------------------------------------ */
+.hero {
+  margin: 0 0 24px;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  background: var(--cream);
+  line-height: 0;
+  text-align: center;
+}
+.hero img {
+  display: inline-block;
+  width: 100%;
+  max-width: 420px;
+  height: auto;
+  border-radius: 8px;
+}
 
 /* --- Form ------------------------------------------------------------ */
 .field { border: 0; padding: 0; margin: 0 0 28px; }
@@ -241,7 +297,9 @@ input[type="range"] {
 }
 .quote-total {
   margin: 6px 0 0;
-  font-size: 2.4rem; font-weight: 700; letter-spacing: -.03em;
+  font-family: var(--font-display);
+  font-size: 2.2rem; font-weight: 800; letter-spacing: -.02em;
+  color: var(--accent);
   font-variant-numeric: tabular-nums;
 }
 .quote-sub { margin: 4px 0 0; font-size: .85rem; color: var(--text-muted); }
@@ -271,7 +329,10 @@ input[type="range"] {
 .breakdown .cell-detail { display: block; font-size: .78rem; color: var(--text-muted); }
 .breakdown tfoot td { padding-top: 10px; border-top: 1px solid var(--border); }
 .breakdown tfoot tr + tr td { border-top: 0; padding-top: 4px; }
-.breakdown .row-total td { padding-top: 12px; border-top: 2px solid var(--border); font-size: 1.05rem; font-weight: 700; }
+.breakdown .row-total td {
+  padding-top: 12px; border-top: 2px solid var(--border);
+  font-family: var(--font-display); font-size: 1.15rem; font-weight: 800;
+}
 .breakdown .row-discount td { color: var(--good); }
 .breakdown .row-deposit td { color: var(--text-muted); font-size: .82rem; }
 
@@ -287,7 +348,7 @@ input[type="range"] {
   cursor: pointer;
 }
 .btn-primary { margin-top: 16px; background: var(--accent); color: var(--accent-text); }
-.btn-primary:hover { filter: brightness(1.06); }
+.btn-primary:hover { background: var(--accent-hover); }
 .btn-ghost {
   width: auto; background: transparent; color: var(--text-muted);
   border-color: var(--border); font-weight: 500; font-size: .875rem; padding: 9px 16px;
@@ -337,7 +398,9 @@ input[type="range"] {
 }
 .mobile-bar-total {
   margin: 1px 0 0;
-  font-size: 1.4rem; font-weight: 700; letter-spacing: -.02em;
+  font-family: var(--font-display);
+  font-size: 1.35rem; font-weight: 800; letter-spacing: -.02em;
+  color: var(--accent);
   font-variant-numeric: tabular-nums;
 }
 .mobile-bar-btn { width: auto; flex: none; margin-top: 0; padding: 10px 16px; font-size: .9rem; }

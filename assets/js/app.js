@@ -7,18 +7,15 @@
   const cfg = PRICING;
   const $ = (id) => document.getElementById(id);
 
+  /* Rials are written to 3 decimals (baisa); `decimals` in the config sets it. */
+  const dp = Number.isInteger(cfg.decimals) ? cfg.decimals : 2;
   const money = new Intl.NumberFormat(cfg.locale, {
     style: "currency",
     currency: cfg.currency,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: dp,
+    maximumFractionDigits: dp,
   });
-  /* Whole amounts read better without ".00" in the big total. */
-  const moneyRound = new Intl.NumberFormat(cfg.locale, {
-    style: "currency",
-    currency: cfg.currency,
-    maximumFractionDigits: 0,
-  });
-  const fmt = (n) => (Number.isInteger(n) ? moneyRound.format(n) : money.format(n));
+  const fmt = (n) => money.format(n);
 
   const el = {
     form: $("quoteForm"),
@@ -49,7 +46,7 @@
 
   /* --- Static text from the config ------------------------------------ */
   function applyBusinessText() {
-    document.title = `Cart hire cost calculator — ${cfg.business.name}`;
+    document.title = `${cfg.business.name} — Cart hire cost calculator`;
     document.querySelectorAll("[data-business-name]").forEach((n) => {
       n.textContent = cfg.business.name;
     });
@@ -267,7 +264,8 @@
     const weekday = date.toLocaleDateString(cfg.locale, { weekday: "long" });
     const notes = [];
     const s = cfg.surcharges;
-    if (s.weekendPercent > 0 && (date.getDay() === 0 || date.getDay() === 6)) {
+    const weekendDays = s.weekendDays || [0, 6];
+    if (s.weekendPercent > 0 && weekendDays.includes(date.getDay())) {
       notes.push(`weekend rate +${s.weekendPercent}%`);
     }
     if (s.peakMonthPercent > 0 && (s.peakMonths || []).includes(m)) {
@@ -284,19 +282,47 @@
   }
 
   /* --- Theme ----------------------------------------------------------- */
+  const ICON = {
+    /* A moon to switch to dark, a sun to switch back. */
+    moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
+    sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2' +
+         'M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/>',
+  };
+
   function initTheme() {
     const root = document.documentElement;
+    const button = $("themeToggle");
+    const icon = $("themeIcon");
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+
+    const isDark = () =>
+      root.getAttribute("data-theme") === "dark" ||
+      (!root.hasAttribute("data-theme") && media.matches);
+
+    function paint() {
+      const dark = isDark();
+      icon.innerHTML = dark ? ICON.sun : ICON.moon;
+      button.setAttribute(
+        "aria-label",
+        dark ? "Switch to light theme" : "Switch to dark theme"
+      );
+    }
+
     let stored = null;
     try { stored = localStorage.getItem("cartapp-theme"); } catch (e) { /* private mode */ }
     if (stored === "light" || stored === "dark") root.setAttribute("data-theme", stored);
+    paint();
 
-    $("themeToggle").addEventListener("click", () => {
-      const isDark = root.getAttribute("data-theme") === "dark" ||
-        (!root.hasAttribute("data-theme") &&
-          window.matchMedia("(prefers-color-scheme: dark)").matches);
-      const next = isDark ? "light" : "dark";
+    /* Follow the system while the visitor has not chosen for themselves. */
+    media.addEventListener("change", () => {
+      if (!root.hasAttribute("data-theme")) paint();
+    });
+
+    button.addEventListener("click", () => {
+      const next = isDark() ? "light" : "dark";
       root.setAttribute("data-theme", next);
       try { localStorage.setItem("cartapp-theme", next); } catch (e) { /* ignore */ }
+      paint();
     });
   }
 

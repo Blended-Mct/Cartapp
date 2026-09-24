@@ -192,3 +192,40 @@ test("the per-guest figure matches the total", () => {
 test("an unknown cart id falls back to the first cart instead of crashing", () => {
   assert.equal(q({ packageId: "nope" }).package.id, "coffee");
 });
+
+/* --- Currency decimals and configurable weekend ------------------------ */
+
+test("amounts round to the configured decimal places (3 for rials)", () => {
+  const rials = {
+    ...cfg,
+    decimals: 3,
+    packages: [{ ...cfg.packages[0], basePrice: 0, includedServings: 0, perExtraServing: 0.3333 }],
+    fees: { ...cfg.fees, setupFee: 0 },
+  };
+  const r = calculateQuote({ ...base, guests: 11 }, rials); // 17 servings x 0.3333
+  assert.equal(lineAmount(r, "Additional servings"), 5.666);
+  assert.equal(r.total, 5.666);
+});
+
+test("two decimals stay the default when decimals is not set", () => {
+  const r = q({ guests: 11 }); // 17 servings, all included, base + set-up
+  assert.equal(r.total, 1100);
+  assert.equal(calculateQuote({ ...base, guests: 11 }, { ...cfg, decimals: 2 }).total, 1100);
+});
+
+test("the weekend can be set to Friday and Saturday", () => {
+  const oman = { ...cfg, surcharges: { ...cfg.surcharges, weekendDays: [5, 6] } };
+  // 2026-06-05 is a Friday, 2026-06-07 a Sunday.
+  assert.equal(lineAmount(calculateQuote({ ...base, date: "2026-06-05" }, oman), "Weekend"), 100);
+  assert.equal(lineAmount(calculateQuote({ ...base, date: "2026-06-07" }, oman), "Weekend"), null);
+  // With the default (Sat/Sun) the same Friday carries no surcharge.
+  assert.equal(lineAmount(q({ date: "2026-06-05" }), "Weekend"), null);
+});
+
+test("Oman VAT at 5% applies to the discounted subtotal", () => {
+  const vat = { ...cfg, decimals: 3, tax: { percent: 5, label: "VAT" } };
+  const r = calculateQuote(base, vat);
+  assert.equal(r.subtotal, 1100);
+  assert.equal(r.tax.amount, 55);
+  assert.equal(r.total, 1155);
+});
