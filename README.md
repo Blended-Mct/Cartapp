@@ -234,12 +234,28 @@ The tests use their own fixed prices, so they keep passing when you change
 
 ## Putting it online
 
-The site is static, so it will run anywhere. The free option:
+The site is published to **GitHub Pages** by
+[`.github/workflows/pages.yml`](.github/workflows/pages.yml), which runs on every
+push to `main`. The tests run first and the deploy waits on them, so a mistake in
+the prices stops the deploy rather than reaching customers.
 
-**GitHub Pages** — in this repository go to *Settings → Pages*, set *Source* to
-*Deploy from a branch*, pick your branch and the `/ (root)` folder, and save.
-A minute later your calculator is live at
-`https://kifahkruce-oss.github.io/Cartapp/`.
+### Switching Pages on (once)
+
+The workflow tries to enable Pages itself, but GitHub refuses that from a
+workflow token — *"Resource not accessible by integration"*. It has to be done
+by hand, once:
+
+**Settings → Pages → Build and deployment → Source: GitHub Actions**
+
+Then re-run the workflow from the Actions tab (or push anything to `main`). The
+site appears at `https://kifahkruce-oss.github.io/Cartapp/` a minute later, and
+every push to `main` updates it from then on.
+
+Alternatively, set *Source* to *Deploy from a branch* → `main` → `/ (root)`.
+That publishes without the workflow, and so without the tests as a gate.
+
+The repository's default branch is still the working branch it was built on.
+To make `main` the default: **Settings → General → Default branch**.
 
 Netlify, Cloudflare Pages and Vercel also work — drag the folder in, no
 configuration needed. To put it on your existing website, upload these files to
@@ -255,6 +271,7 @@ any folder on your host, or embed it in a page with an iframe:
 ## What's in each file
 
 ```
+.github/workflows/pages.yml    runs the tests, then publishes the site
 index.html                     the page
 assets/css/styles.css          appearance (colours are tokens at the top)
 assets/css/font.css            the display font, embedded
