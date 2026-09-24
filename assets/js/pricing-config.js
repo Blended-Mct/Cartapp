@@ -29,7 +29,12 @@ const PRICING = {
   /* --- What every booking starts with ---------------------------------- */
   serviceFee: 30,          // charged once on every booking
   serviceFeeLabel: "Cart service fee",
-  minimumCups: 50,         // smallest order we accept, in cups
+
+  /* The smallest quantity we serve of any one menu item. The cup counters
+     will not go below it: they step straight from 0 up to this number, so a
+     customer can never build an order we would have to turn down. An item can
+     set its own higher minimum with `minCups` below.                        */
+  minimumCups: 50,
 
   /* --- How long the cart serves ---------------------------------------- */
   duration: {
@@ -74,9 +79,10 @@ const PRICING = {
 
   /* --- The menu --------------------------------------------------------
      pricePerCup : what one cup costs
-     minCups     : the smallest quantity we serve of this item. Order fewer
-                   and the minimum is charged. Leave it out for no minimum.
-     note        : the small print shown under the item                     */
+     minCups     : this item's own minimum, when it is higher than the
+                   `minimumCups` above. Leave it out to use that default.
+     note        : the small print shown under the item. The minimum is added
+                   to it automatically, so there is no need to repeat it.    */
   menu: [
     {
       id: "gelato", group: "icecream", name: "Gelato",
@@ -86,7 +92,7 @@ const PRICING = {
     {
       id: "softserve", group: "icecream", name: "Soft serve",
       pricePerCup: 1.5, minCups: 200,
-      note: "Available for orders of 200 cups or more",
+      note: "Swirled to order, in a cone or a cup",
     },
     {
       id: "espresso", group: "drinks", name: "Coffee — espresso base",
@@ -95,8 +101,8 @@ const PRICING = {
     },
     {
       id: "creamy_espresso", group: "drinks", name: "Creamy espresso",
-      pricePerCup: 1.5, minCups: 50,
-      note: "Minimum 50 cups",
+      pricePerCup: 1.5,
+      note: "Espresso over sweet cream",
     },
     {
       id: "matcha", group: "drinks", name: "Matcha",
@@ -105,8 +111,8 @@ const PRICING = {
     },
     {
       id: "creamy_matcha", group: "drinks", name: "Creamy matcha",
-      pricePerCup: 1.5, minCups: 50,
-      note: "Minimum 50 cups",
+      pricePerCup: 1.5,
+      note: "Matcha over sweet cream",
     },
     {
       id: "other_drinks", group: "drinks", name: "Iced tea & hibiscus",
@@ -116,13 +122,12 @@ const PRICING = {
   ],
 
   /* --- Extras charged per cup ------------------------------------------
-     appliesTo : "icecream", "drinks" or "all" — which cups it is counted on
-     minCups   : the smallest quantity billed, even if fewer cups are ordered */
+     appliesTo : "icecream", "drinks" or "all" — which cups it is counted on */
   cupExtras: [
     {
       id: "extra_toppings", name: "Extra toppings",
       note: "Beyond the 3 included with gelato",
-      pricePerCup: 0.2, minCups: 50, appliesTo: "icecream",
+      pricePerCup: 0.2, appliesTo: "icecream",
     },
     {
       id: "cookies", name: "Cookies",
@@ -132,7 +137,7 @@ const PRICING = {
     {
       id: "branded_cups", name: "Branded cups",
       note: "Printed with your logo or event name",
-      pricePerCup: 0.25, minCups: 50, appliesTo: "all",
+      pricePerCup: 0.25, appliesTo: "all",
     },
   ],
 

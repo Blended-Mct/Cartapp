@@ -41,7 +41,8 @@ it appears on the form automatically.
 ### How a price is built
 
 1. **Service fee** — charged on every booking, covering the included hours.
-2. **The menu** — each item's cups × its `pricePerCup`.
+2. **The menu** — each item's cups × its `pricePerCup`. Quantities are already
+   held at or above each item's minimum by the counters.
 3. **Per-cup extras** — counted on the cups they apply to.
 4. **Flat extras** — charged once.
 5. **Location** — the charge for the chosen area.
@@ -50,15 +51,22 @@ it appears on the form automatically.
 
 ### Minimums
 
-Two different kinds, and they behave differently:
+**`minimumCups`** (currently 50) is the smallest quantity served of any one
+item. A menu item can set a higher one of its own with **`minCups`** — soft
+serve is 200.
 
-- **`minimumCups`** (currently 50) is the smallest booking overall. It is stated
-  at the top of the page and again above the menu, before any cups are chosen.
-  An order below it is still priced — the customer is told how many cups short
-  they are — but it cannot be submitted as an enquiry.
-- **`minCups` on a menu item or extra** is the smallest quantity served of that
-  one thing. Order fewer and **the minimum is charged** — 120 cups of soft serve
-  bills as 200, and the breakdown says so in plain words.
+The minimum is enforced **by the cup counter itself**, not checked later:
+
+- The counter steps straight from 0 to the minimum on the first press of **+**.
+- Stepping **−** at the minimum clears the item back to 0, rather than landing
+  on a quantity you do not serve.
+- A number typed under the minimum is corrected upward when the customer leaves
+  the box.
+- Every item shows its minimum as a badge (*from 50 cups*), so it is known
+  before anything is chosen.
+
+So an order below a minimum cannot be built, and there is nothing to warn about
+or reject at the end. The only order that cannot be sent is an empty one.
 
 ### Menu items
 
@@ -68,7 +76,7 @@ Two different kinds, and they behave differently:
   group: "icecream",       // "icecream" or "drinks" — decides which carts show it
   name: "Gelato",
   pricePerCup: 1,
-  minCups: 200,            // optional; leave it out for no minimum
+  minCups: 200,            // optional; leave it out to use `minimumCups`
   note: "Includes 3 toppings of your choice",
 }
 ```
@@ -80,7 +88,8 @@ shows gelato and The Blend shows everything.
 
 `cupExtras` are charged per cup, and `appliesTo` says which cups they are
 counted on — `"icecream"`, `"drinks"` or `"all"`. Extra toppings count only ice
-cream cups; branded cups count every cup.
+cream cups; branded cups count every cup. They follow the cups actually charged,
+so they inherit the counters' minimums automatically.
 
 `flatExtras` are charged once, whatever the order size.
 

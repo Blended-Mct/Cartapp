@@ -45,10 +45,10 @@ function validateEnquiry(details, quote, config) {
     errors.email = "That email address does not look right.";
   }
 
-  if (!quote.meetsMinimum) {
-    errors.cups =
-      `Our smallest booking is ${config.minimumCups} cups. ` +
-      `Please add more cups before sending.`;
+  /* The cup counters hold every quantity at or above its minimum, so the only
+     order that cannot be sent is an empty one. */
+  if (!quote.hasOrder) {
+    errors.cups = "Please choose how many cups you would like.";
   }
 
   return { ok: Object.keys(errors).length === 0, errors };

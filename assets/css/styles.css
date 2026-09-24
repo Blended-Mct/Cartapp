@@ -568,3 +568,15 @@ input[type="range"] {
 @media print {
   .minimum-banner, .sent-panel { display: none !important; }
 }
+
+/* The minimum quantity, shown on every menu item so it is never a surprise */
+.menu-item-min {
+  display: inline-block;
+  margin-top: 5px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: .72rem;
+  font-weight: 700;
+}

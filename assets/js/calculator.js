@@ -17,6 +17,21 @@ function clamp(n, min, max) {
   return Math.min(max, Math.max(min, n));
 }
 
+/* The smallest quantity we serve of one item: its own minimum if it sets one,
+   otherwise the shop-wide minimum. The cup counters are held to this, so an
+   order below it cannot be built in the first place. */
+function itemMinimum(item, config) {
+  return Number.isFinite(item.minCups) ? item.minCups : config.minimumCups;
+}
+
+/* A raw cup count, cleaned up: whole cups, and either none at all or at least
+   the item's minimum. */
+function normaliseCups(raw, item, config) {
+  const cups = Math.round(Number(raw) || 0);
+  if (cups <= 0) return 0;
+  return Math.max(cups, itemMinimum(item, config));
+}
+
 /* The menu items a given cart can serve. */
 function menuForCart(cart, config) {
   return config.menu.filter((item) => cart.serves.includes(item.group));
@@ -58,12 +73,12 @@ function calculateQuote(input, config) {
   const cart = config.carts.find((c) => c.id === input.cartId) || config.carts[0];
   const round = (n) => roundTo(n, config.decimals);
 
-  /* Keep only the items this cart serves, cleaned up to whole cups. The form
+  /* Keep only the items this cart serves, each held to its minimum. The form
      remembers what was typed against other carts, but none of it is charged. */
   const quantities = {};
   menuForCart(cart, config).forEach((item) => {
-    const ordered = Math.round(Number((input.quantities || {})[item.id]) || 0);
-    if (ordered > 0) quantities[item.id] = ordered;
+    const cups = normaliseCups((input.quantities || {})[item.id], item, config);
+    if (cups > 0) quantities[item.id] = cups;
   });
 
   const lines = [];
@@ -81,26 +96,15 @@ function calculateQuote(input, config) {
   let totalCups = 0;
 
   items.forEach((item) => {
-    const ordered = quantities[item.id] || 0;
-    if (ordered <= 0) return;
+    const cups = quantities[item.id] || 0;
+    if (cups <= 0) return;
 
-    totalCups += ordered;
-
-    /* An item with a minimum is billed at that minimum. */
-    const billed = item.minCups ? Math.max(ordered, item.minCups) : ordered;
-    const detail =
-      billed > ordered
-        ? `${ordered} cups ordered, ${billed} cup minimum × ${item.pricePerCup}`
-        : `${billed} cups × ${item.pricePerCup}`;
-
-    lines.push({ label: item.name, detail, amount: billed * item.pricePerCup });
-
-    if (billed > ordered) {
-      warnings.push(
-        `${item.name} is served from ${item.minCups} cups up, so ${item.minCups} ` +
-        `cups are charged.`
-      );
-    }
+    totalCups += cups;
+    lines.push({
+      label: item.name,
+      detail: `${cups} cups × ${item.pricePerCup}`,
+      amount: cups * item.pricePerCup,
+    });
   });
 
   /* 3. Extras charged per cup -------------------------------------------- */
@@ -176,15 +180,12 @@ function calculateQuote(input, config) {
         }
       : null;
 
-  /* 8. Is this a bookable order? ------------------------------------------ */
-  const meetsMinimum = totalCups >= config.minimumCups;
-  if (totalCups === 0) {
+  /* 8. Is there anything to quote? -----------------------------------------
+     Every quantity is already held to its minimum by the counters, so the only
+     order we cannot price is an empty one. */
+  const hasOrder = totalCups > 0;
+  if (!hasOrder) {
     warnings.push("Choose how many cups you would like to see a price.");
-  } else if (!meetsMinimum) {
-    warnings.push(
-      `Our smallest booking is ${config.minimumCups} cups — ` +
-      `${config.minimumCups - totalCups} more to go.`
-    );
   }
 
   return {
@@ -192,7 +193,7 @@ function calculateQuote(input, config) {
     location,
     hours,
     totalCups,
-    meetsMinimum,
+    hasOrder,
     lines: lines.map((l) => ({ ...l, amount: round(l.amount) })),
     subtotal,
     tax,
@@ -205,6 +206,7 @@ function calculateQuote(input, config) {
 
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
-    calculateQuote, menuForCart, cupExtrasForCart, cupsForScope, roundTo, clamp,
+    calculateQuote, menuForCart, cupExtrasForCart, cupsForScope,
+    itemMinimum, normaliseCups, roundTo, clamp,
   };
 }

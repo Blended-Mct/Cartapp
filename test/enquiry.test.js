@@ -50,9 +50,11 @@ const quote = calculateQuote(
   cfg
 );
 
-const tooFewCups = calculateQuote(
+/* The counters cannot produce an under-minimum order, so the only unsendable
+   one is empty. */
+const emptyOrder = calculateQuote(
   {
-    cartId: "icecream", quantities: { gelato: 20 },
+    cartId: "icecream", quantities: {},
     locationId: "muscat", hours: 2, cupExtras: [], flatExtras: [],
   },
   cfg
@@ -113,10 +115,22 @@ test("email is optional but must look like an email when given", () => {
   assert.equal(check({ email: "a@b.om" }).ok, true);
 });
 
-test("an order below the cup minimum cannot be sent", () => {
-  const { ok, errors } = validateEnquiry(good, tooFewCups, cfg);
+test("an empty order cannot be sent", () => {
+  const { ok, errors } = validateEnquiry(good, emptyOrder, cfg);
   assert.equal(ok, false);
-  assert.ok(errors.cups.includes("50 cups"));
+  assert.match(errors.cups, /how many cups/);
+});
+
+test("an order raised to the minimum by the counters sends fine", () => {
+  const raised = calculateQuote(
+    {
+      cartId: "icecream", quantities: { gelato: 20 },
+      locationId: "muscat", hours: 2, cupExtras: [], flatExtras: [],
+    },
+    cfg
+  );
+  assert.equal(raised.totalCups, 50);
+  assert.equal(validateEnquiry(good, raised, cfg).ok, true);
 });
 
 /* --- What the email says ------------------------------------------------ */

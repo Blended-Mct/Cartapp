@@ -6,7 +6,7 @@
 
 const assert = require("node:assert/strict");
 const { test } = require("node:test");
-const { calculateQuote, cupsForScope, roundTo } =
+const { calculateQuote, cupsForScope, itemMinimum, normaliseCups, roundTo } =
   require("../assets/js/calculator.js");
 
 /* A small, predictable price list — easy to check the arithmetic by hand. */
@@ -32,12 +32,12 @@ const cfg = {
     { id: "softserve", group: "icecream", name: "Soft serve", pricePerCup: 1.5, minCups: 200 },
     { id: "espresso", group: "drinks", name: "Espresso", pricePerCup: 1.5 },
     { id: "matcha", group: "drinks", name: "Matcha", pricePerCup: 2 },
-    { id: "creamy", group: "drinks", name: "Creamy matcha", pricePerCup: 1.5, minCups: 50 },
+    { id: "creamy", group: "drinks", name: "Creamy matcha", pricePerCup: 1.5 },
   ],
   cupExtras: [
-    { id: "toppings", name: "Extra toppings", pricePerCup: 0.2, minCups: 50, appliesTo: "icecream" },
+    { id: "toppings", name: "Extra toppings", pricePerCup: 0.2, appliesTo: "icecream" },
     { id: "cookies", name: "Cookies", pricePerCup: 0.9, appliesTo: "icecream" },
-    { id: "branded_cups", name: "Branded cups", pricePerCup: 0.25, minCups: 50, appliesTo: "all" },
+    { id: "branded_cups", name: "Branded cups", pricePerCup: 0.25, appliesTo: "all" },
   ],
   flatExtras: [
     { id: "female_server", name: "Female server", price: 15 },
@@ -97,24 +97,46 @@ test("an unknown location falls back to the first one", () => {
   assert.equal(q({ locationId: "nowhere" }).location.id, "muscat");
 });
 
-/* --- Menu minimums ----------------------------------------------------- */
+/* --- Menu minimums: floors on the quantity, not surprises on the bill --- */
 
-test("soft serve below its 200 cup minimum is billed at the minimum", () => {
+test("an item's minimum is the shop minimum unless it sets its own", () => {
+  assert.equal(itemMinimum(cfg.menu[0], cfg), 50);  // gelato, default
+  assert.equal(itemMinimum(cfg.menu[1], cfg), 200); // soft serve, its own
+});
+
+test("normaliseCups gives either nothing or at least the minimum", () => {
+  const gelato = cfg.menu[0];
+  assert.equal(normaliseCups(0, gelato, cfg), 0);
+  assert.equal(normaliseCups(-5, gelato, cfg), 0);
+  assert.equal(normaliseCups(1, gelato, cfg), 50);
+  assert.equal(normaliseCups(30, gelato, cfg), 50);
+  assert.equal(normaliseCups(120, gelato, cfg), 120);
+  assert.equal(normaliseCups(120, cfg.menu[1], cfg), 200); // soft serve floor
+});
+
+test("a quantity under the minimum is raised to it, and counted as raised", () => {
+  const r = q({ quantities: { gelato: 30 } });
+  assert.equal(r.totalCups, 50);
+  assert.equal(lineAmount(r, "Gelato"), 50);
+  /* The breakdown states what is charged, with nothing to explain away. */
+  assert.match(r.lines.find((l) => l.label === "Gelato").detail, /^50 cups/);
+});
+
+test("soft serve under 200 is raised to 200", () => {
   const r = q({ quantities: { softserve: 120 } });
-  assert.equal(lineAmount(r, "Soft serve"), 300); // 200 x 1.5, not 120 x 1.5
-  assert.equal(r.totalCups, 120);                 // the order is still 120 cups
-  assert.ok(r.warnings.some((w) => w.includes("200")));
+  assert.equal(r.totalCups, 200);
+  assert.equal(lineAmount(r, "Soft serve"), 300);
 });
 
-test("soft serve above its minimum is billed as ordered", () => {
+test("a quantity above the minimum is left alone", () => {
   const r = q({ quantities: { softserve: 260 } });
+  assert.equal(r.totalCups, 260);
   assert.equal(lineAmount(r, "Soft serve"), 390);
-  assert.equal(r.warnings.some((w) => w.includes("200")), false);
 });
 
-test("a drinks item with a 50 cup minimum behaves the same way", () => {
-  const r = q({ cartId: "drinks", quantities: { creamy: 20 } });
-  assert.equal(lineAmount(r, "Creamy matcha"), 75); // 50 x 1.5
+test("raising a quantity is never announced as a warning", () => {
+  assert.deepEqual(q({ quantities: { gelato: 30 } }).warnings, []);
+  assert.deepEqual(q({ quantities: { softserve: 10 } }).warnings, []);
 });
 
 /* --- Which cart serves what ------------------------------------------- */
@@ -155,7 +177,8 @@ test("extra toppings count only ice cream cups, branded cups count all", () => {
   assert.equal(lineAmount(r, "Branded cups"), 40);    // 160 cups x 0.25
 });
 
-test("a per-cup extra below its minimum is billed at the minimum", () => {
+test("a per-cup extra follows the cups actually charged", () => {
+  /* 20 gelato is raised to 50, so the toppings are counted on 50 cups. */
   const r = q({ quantities: { gelato: 20 }, cupExtras: ["toppings"] });
   assert.equal(lineAmount(r, "Extra toppings"), 10); // 50 x 0.2
 });
@@ -186,26 +209,20 @@ test("cupsForScope counts the right cups", () => {
   assert.equal(cupsForScope("all", qty, cfg), 180);
 });
 
-/* --- The order minimum ------------------------------------------------- */
-
-test("an order under the cup minimum is flagged but still priced", () => {
-  const r = q({ quantities: { gelato: 30 } });
-  assert.equal(r.meetsMinimum, false);
-  assert.equal(r.total, 60);
-  assert.ok(r.warnings.some((w) => w.includes("20 more")));
-});
+/* --- Having an order at all -------------------------------------------- */
 
 test("an empty order asks for cups instead of quoting", () => {
   const r = q({ quantities: {} });
+  assert.equal(r.hasOrder, false);
   assert.equal(r.totalCups, 0);
   assert.equal(r.perCup, 0);
   assert.ok(r.warnings.some((w) => w.includes("Choose how many cups")));
 });
 
-test("exactly the minimum is accepted without a warning", () => {
-  const r = q({ quantities: { gelato: 50 } });
-  assert.equal(r.meetsMinimum, true);
-  assert.equal(r.warnings.length, 0);
+test("any order at all is quotable, because the counters enforce the floor", () => {
+  assert.equal(q({ quantities: { gelato: 50 } }).hasOrder, true);
+  assert.equal(q({ quantities: { gelato: 1 } }).hasOrder, true);
+  assert.deepEqual(q({ quantities: { gelato: 50 } }).warnings, []);
 });
 
 /* --- Totals ------------------------------------------------------------ */
@@ -241,7 +258,8 @@ test("the per-cup figure matches the total", () => {
 
 test("fractional or negative cup counts are cleaned up", () => {
   assert.equal(q({ quantities: { gelato: -20 } }).totalCups, 0);
-  assert.equal(q({ quantities: { gelato: 10.6 } }).totalCups, 11);
+  assert.equal(q({ quantities: { gelato: 60.6 } }).totalCups, 61);
+  assert.equal(q({ quantities: { gelato: 10.6 } }).totalCups, 50); // raised
 });
 
 /* --- Cups typed against one cart must not follow to another ------------- */
@@ -251,7 +269,7 @@ test("cups for items the cart does not serve are never counted or charged", () =
      ice cream cart must forget the drinks. */
   const r = q({
     cartId: "icecream",
-    quantities: { gelato: 120, matcha: 80, espresso: 40 },
+    quantities: { gelato: 120, matcha: 80, espresso: 50 },
     cupExtras: ["branded_cups"],
   });
   assert.equal(r.totalCups, 120);

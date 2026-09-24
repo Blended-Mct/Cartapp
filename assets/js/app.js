@@ -18,6 +18,8 @@
   const fmt = (n) => money.format(n);
 
   const GROUP_NAMES = { icecream: "Ice cream", drinks: "Drinks" };
+  /* How much the +/− buttons move once an item is in the order. */
+  const STEP = 10;
 
   const el = {
     form: $("quoteForm"),
@@ -69,12 +71,18 @@
 
   /* --- The order minimum, said once at the top and once by the menu ---- */
   function applyMinimumText() {
-    const text = `Minimum order ${cfg.minimumCups} cups.`;
     el.minimumBanner.textContent =
-      `${text} Every booking starts at ${fmt(cfg.serviceFee)}, ` +
-      `which covers ${cfg.duration.includedHours} hours of service.`;
+      `Every booking starts at ${fmt(cfg.serviceFee)}, which covers ` +
+      `${cfg.duration.includedHours} hours of service. ` +
+      `We serve from ${cfg.minimumCups} cups of any item.`;
+    /* Name any item whose own minimum is higher, so it is no surprise. */
+    const higher = cfg.menu
+      .filter((item) => Number.isFinite(item.minCups) && item.minCups > cfg.minimumCups)
+      .map((item) => `${item.name.toLowerCase()} from ${item.minCups}`);
     el.menuMinimumNote.textContent =
-      `${text} Mix and match freely — it is the total that counts.`;
+      `Each item is served from ${cfg.minimumCups} cups up` +
+      (higher.length ? `, ${higher.join(", ")}` : "") +
+      `. Add as many kinds as you like.`;
   }
 
   /* --- Cart chooser ---------------------------------------------------- */
@@ -128,6 +136,7 @@
       }
 
       items.forEach((item) => {
+        const min = itemMinimum(item, cfg);
         const row = document.createElement("div");
         row.className = "menu-item";
         row.innerHTML = `
@@ -135,14 +144,16 @@
             <span class="menu-item-name"></span>
             <span class="menu-item-note"></span>
             <span class="menu-item-price">${fmt(item.pricePerCup)} per cup</span>
+            <span class="menu-item-min">from ${min} cups</span>
           </div>
           <div class="qty">
-            <button type="button" class="qty-btn" data-step="-10"
+            <button type="button" class="qty-btn" data-step="-${STEP}"
                     aria-label="Fewer cups of ${item.name}">−</button>
             <input type="number" class="qty-input" inputmode="numeric"
-                   min="0" max="5000" step="1" value="${quantities[item.id] || 0}"
-                   data-item="${item.id}" aria-label="Cups of ${item.name}">
-            <button type="button" class="qty-btn" data-step="10"
+                   min="0" max="5000" step="${STEP}" value="${quantities[item.id] || 0}"
+                   data-item="${item.id}" data-min="${min}"
+                   aria-label="Cups of ${item.name}">
+            <button type="button" class="qty-btn" data-step="${STEP}"
                     aria-label="More cups of ${item.name}">+</button>
           </div>`;
         row.querySelector(".menu-item-name").textContent = item.name;
@@ -151,14 +162,40 @@
       });
     });
 
-    /* The +/− buttons move in tens, which is how people order cups. */
     el.menu.querySelectorAll(".qty-btn").forEach((button) => {
       button.addEventListener("click", () => {
         const input = button.parentElement.querySelector(".qty-input");
+        const min = Number(input.dataset.min);
+        const current = Number(input.value) || 0;
         const step = Number(button.dataset.step);
-        const next = Math.max(0, (Number(input.value) || 0) + step);
+
+        /* From nothing, the first press jumps straight to the minimum. At the
+           minimum, stepping down clears the item rather than landing on a
+           quantity we do not serve. */
+        let next;
+        if (step > 0) {
+          next = current === 0 ? min : current + step;
+        } else if (current <= min) {
+          next = 0;
+        } else {
+          next = Math.max(min, current + step);
+        }
+
         input.value = next;
         quantities[input.dataset.item] = next;
+        update();
+      });
+    });
+
+    /* A typed number is corrected when the customer leaves the box, so they
+       are never told off mid-keystroke. */
+    el.menu.querySelectorAll(".qty-input").forEach((input) => {
+      input.addEventListener("change", () => {
+        const min = Number(input.dataset.min);
+        const typed = Math.round(Number(input.value) || 0);
+        const corrected = typed <= 0 ? 0 : Math.max(typed, min);
+        input.value = corrected;
+        quantities[input.dataset.item] = corrected;
         update();
       });
     });
@@ -333,14 +370,9 @@
         ? `${q.location.name} carries a ${fmt(q.location.charge)} travel charge.`
         : `No travel charge within ${q.location.name}.`;
 
-    const short = cfg.minimumCups - q.totalCups;
-    el.cupsTotal.textContent =
-      q.totalCups === 0
-        ? `Minimum order ${cfg.minimumCups} cups.`
-        : q.meetsMinimum
-        ? `${q.totalCups} cups in total.`
-        : `${q.totalCups} cups — ${short} short of our ${cfg.minimumCups} cup minimum.`;
-    el.cupsTotal.classList.toggle("is-alert", q.totalCups > 0 && !q.meetsMinimum);
+    el.cupsTotal.textContent = q.hasOrder
+      ? `${q.totalCups} cups in total.`
+      : "Nothing chosen yet.";
   }
 
   /* Highlight the rows the customer has actually ordered. */
