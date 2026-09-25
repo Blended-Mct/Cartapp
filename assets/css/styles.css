@@ -655,3 +655,8 @@ input[type="range"] {
 .extra-counters { display: grid; gap: 8px; margin-bottom: 14px; }
 .extra-counters .menu-item + .menu-item { margin-top: 0; }
 .menu-item-min:empty { display: none; }
+
+/* The link back to the mail app, if it did not open by itself */
+.sent-again { margin: 0 0 16px; }
+.sent-again a { color: var(--accent); font-weight: 700; font-size: .9rem; }
+.sent-again a[hidden] { display: none; }

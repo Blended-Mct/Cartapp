@@ -99,6 +99,12 @@ const STRINGS = {
     sendByEmail: "Send it by email instead",
     notSetUp: "This form is not set up to send yet.",
     sentTitle: "Thank you — your enquiry is on its way.",
+    sentTitleMailto: "Almost there — press send in your email.",
+    sentBodyMailto:
+      "{name}your email app should have opened with the whole enquiry already " +
+      "written, addressed to us. Press send and it reaches us. {later}" +
+      "If nothing opened, use the link below.",
+    openEmailAgain: "Open my email again",
     namePrefix: "{name}, ",
     sentBody: "{name}we have your enquiry and will be in touch on {phone} with a " +
               "confirmed quote. {later}Your estimate is still on screen — print it " +
@@ -214,6 +220,12 @@ const STRINGS = {
     sendByEmail: "أرسله عبر البريد الإلكتروني بدلًا من ذلك",
     notSetUp: "هذا النموذج غير جاهز للإرسال بعد.",
     sentTitle: "شكرًا لك — طلبك في طريقه إلينا.",
+    sentTitleMailto: "بقيت خطوة — اضغط إرسال في بريدك.",
+    sentBodyMailto:
+      "{name}يُفترض أن يكون تطبيق البريد قد فُتح ومعه طلبك كاملًا وجاهزًا " +
+      "ومُوجَّهًا إلينا. اضغط إرسال ليصلنا. {later}" +
+      "وإن لم يفتح شيء، استخدم الرابط أدناه.",
+    openEmailAgain: "افتح بريدي مرة أخرى",
     namePrefix: "{name}، ",   /* the Arabic comma, not the Latin one */
     sentBody: "{name}استلمنا طلبك وسنتواصل معك على {phone} بعرض سعر مؤكّد. " +
               "{later}التقدير ما زال ظاهرًا على الشاشة — يمكنك طباعته إن أردت نسخة.",

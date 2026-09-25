@@ -89,7 +89,8 @@ function validateEnquiry(details, quote, config, today = new Date(), lang = "en"
 
    The body of the email. Plain text, so it reads the same in any mail client.
 --------------------------------------------------------------------------- */
-function buildEnquiryText(details, quote, config) {
+function buildEnquiryText(details, quote, config, options) {
+  const compact = !!(options && options.compact);
   const type = eventTypeById(details.eventTypeId, config);
   const cur = config.currency;
   const dp = Number.isInteger(config.decimals) ? config.decimals : 2;
@@ -117,7 +118,11 @@ function buildEnquiryText(details, quote, config) {
   lines.push("");
   lines.push("ESTIMATE");
   quote.lines.forEach((l) => {
-    lines.push(`${l.label} — ${l.detail || "—"}: ${amount(l.amount)}`);
+    lines.push(
+      compact || !l.detail
+        ? `${l.label}: ${amount(l.amount)}`
+        : `${l.label} — ${l.detail}: ${amount(l.amount)}`
+    );
   });
   if (quote.tax) {
     lines.push(`Subtotal: ${amount(quote.subtotal)}`);
@@ -134,12 +139,18 @@ function buildEnquiryText(details, quote, config) {
     lines.push(details.notes.trim());
   }
 
-  lines.push("");
-  if (config.messages && config.messages.chooseLater) {
-    lines.push(config.messages.chooseLater);
+  /* A mailto: link carries the whole enquiry in the address bar, and some mail
+     apps quietly truncate past about 2000 characters — losing the end of it
+     without saying so. The closing notes are for the customer's benefit and
+     mean nothing to the business reading this, so a compact copy drops them. */
+  if (!compact) {
+    lines.push("");
+    if (config.messages && config.messages.chooseLater) {
+      lines.push(config.messages.chooseLater);
+    }
+    lines.push("Sent from the Blended cart cost calculator.");
+    lines.push("This estimate is not a binding quotation.");
   }
-  lines.push("Sent from the Blended cart cost calculator.");
-  lines.push("This estimate is not a binding quotation.");
 
   return lines.join("\n");
 }
@@ -206,7 +217,7 @@ function buildRelayFields(details, quote, config) {
    fails — the enquiry is never lost, the customer can always send it. */
 function enquiryMailto(details, quote, config) {
   const subject = config.enquiry.subject || "New cart enquiry";
-  const body = buildEnquiryText(details, quote, config);
+  const body = buildEnquiryText(details, quote, config, { compact: true });
   return (
     `mailto:${config.enquiry.email}` +
     `?subject=${encodeURIComponent(subject)}` +

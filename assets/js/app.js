@@ -58,6 +58,8 @@
     enquiryFields: $("enquiryFields"),
     sentPanel: $("sentPanel"),
     sentBody: $("sentBody"),
+    sentTitle: null,   /* looked up below, it has no id of its own */
+    openMailAgain: $("openMailAgain"),
     sendBtn: $("sendBtn"),
     sendStatus: $("sendStatus"),
     eventType: $("eventType"),
@@ -598,17 +600,42 @@
     el.sendStatus.append(text, link);
   }
 
-  function showSent(details) {
+  /* What was last sent, so the panel can be redrawn if the language changes. */
+  let sentState = null;
+
+  function showSent(details, mailtoLink) {
+    sentState = { details, mailtoLink: mailtoLink || null };
     el.enquiryFields.hidden = true;
     el.sentPanel.hidden = false;
+    renderSentPanel();
+    el.sentPanel.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  function renderSentPanel() {
+    if (!sentState) return;
+    const { details, mailtoLink } = sentState;
+    const title = el.sentPanel.querySelector(".sent-title");
     const name = (details.name || "").trim().split(/\s+/)[0];
     const later = localised(cfg.messages, "chooseLater", lang);
-    el.sentBody.textContent = say("sentBody", {
+    const vars = {
       name: name ? say("namePrefix", { name }) : "",
-      phone: details.phone.trim(),
+      phone: (details.phone || "").trim(),
       later: later ? `${later} ` : "",
-    });
-    el.sentPanel.scrollIntoView({ behavior: "smooth", block: "center" });
+    };
+
+    /* With the customer's own email app doing the sending, the enquiry is not
+       on its way until they press send — so the panel must not say it is. */
+    if (mailtoLink) {
+      title.textContent = say("sentTitleMailto");
+      el.sentBody.textContent = say("sentBodyMailto", vars);
+      el.openMailAgain.href = mailtoLink;
+      el.openMailAgain.textContent = say("openEmailAgain");
+      el.openMailAgain.hidden = false;
+    } else {
+      title.textContent = say("sentTitle");
+      el.sentBody.textContent = say("sentBody", vars);
+      el.openMailAgain.hidden = true;
+    }
   }
 
   async function submitEnquiry() {
@@ -633,12 +660,13 @@
       return;
     }
 
-    /* In mailto mode the customer's own email app does the sending. */
+    /* In mailto mode the customer's own email app does the sending. The
+       enquiry is written in English whatever language they used, because the
+       business reads it. */
     if (cfg.enquiry.mode === "mailto") {
-      window.location.href = enquiryMailto(
-        details, calculateQuote(readInput(), cfg, "en"), cfg
-      );
-      showSent(details);
+      const link = enquiryMailto(details, calculateQuote(readInput(), cfg, "en"), cfg);
+      window.location.href = link;
+      showSent(details, link);
       return;
     }
 
@@ -761,6 +789,7 @@
     renderMenu();
     renderExtras();
     renderDateHint();
+    renderSentPanel();
     paintTheme();
     update();
   }
@@ -886,6 +915,7 @@
     $("againBtn").addEventListener("click", () => {
       el.enquiryFields.hidden = false;
       el.sentPanel.hidden = true;
+      sentState = null;
       hasTriedToSend = false;
       showErrors({});
       el.sendStatus.textContent = "";

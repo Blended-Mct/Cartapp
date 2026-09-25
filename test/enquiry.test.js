@@ -317,6 +317,41 @@ test("the mailto fallback addresses the business and carries the enquiry", () =>
   assert.match(decodeURIComponent(link), /TOTAL: OMR 145\.000/);
 });
 
+/* --- The copy that travels in a mailto: link ---------------------------- */
+
+test("the mailto copy drops the closing notes and the workings", () => {
+  const full = buildEnquiryText(good, quote, cfg);
+  const compact = buildEnquiryText(good, quote, cfg, { compact: true });
+
+  /* Everything the business needs is still there... */
+  [/Name: Aisha Al Said/, /Phone: 9123 4567/, /Event date: 2026-11-14/,
+   /Cart: Ice Cream Cart/, /Total cups: 100/, /TOTAL: OMR 145\.000/,
+   /Rooftop venue/].forEach((re) => assert.match(compact, re));
+
+  /* ...but the customer-facing closing lines are gone. */
+  assert.equal(/chosen later/.test(compact), false);
+  assert.equal(/not a binding quotation/.test(compact), false);
+  assert.match(full, /not a binding quotation/);
+
+  /* And the per-line workings, which is where the length goes. */
+  assert.match(full, /Gelato — 100 cups × 1: OMR 100\.000/);
+  assert.match(compact, /^Gelato: OMR 100\.000$/m);
+  assert.ok(compact.length < full.length);
+});
+
+test("a mailto link stays well under the length mail apps truncate at", () => {
+  /* Some mail apps quietly cut a mailto: past about 2000 characters, losing
+     the end of the enquiry without saying so. */
+  const link = enquiryMailto(good, quote, cfg);
+  assert.ok(link.length < 2000, `mailto was ${link.length} characters`);
+});
+
+test("the mailto link uses the compact copy, not the full one", () => {
+  const body = decodeURIComponent(enquiryMailto(good, quote, cfg).split("&body=")[1]);
+  assert.equal(/not a binding quotation/.test(body), false);
+  assert.match(body, /TOTAL: OMR 145\.000/);
+});
+
 test("eventTypeById returns null rather than guessing", () => {
   assert.equal(eventTypeById("private", cfg).name, "Private event");
   assert.equal(eventTypeById("nope", cfg), null);

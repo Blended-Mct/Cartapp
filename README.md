@@ -161,12 +161,26 @@ delete its block from the list.
 
 **Read this once — there is a step only you can do.**
 
-Pressing *Send my enquiry* emails you directly; that is the default and the
-customer does nothing else. Behind it, because a plain website cannot send mail
-by itself, the form hands the enquiry to **formsubmit.co**, a free relay that
-emails it to the address in `enquiry.email` (currently `Blended.mct@gmail.com`).
+Pressing *Send my enquiry* opens the customer's own email app with the whole
+enquiry already written and addressed to `Blended.mct@gmail.com`. They press
+send, and it arrives as an ordinary email from them — so you can simply reply to
+it. No third party sees anything, and there is nothing to keep working.
 
-### Switching it on
+The cost is one extra tap, and it depends on the customer's phone having email
+set up. The page says so plainly rather than claiming the enquiry is on its way:
+it reads *"Almost there — press send in your email"*, with a link to open the
+mail app again if nothing happened.
+
+`enquiry.mode` switches between this and the relay:
+
+| Mode | What happens | Trade-off |
+|---|---|---|
+| `"mailto"` *(current)* | Opens the customer's email app | Nothing to set up or maintain; the customer must press send |
+| `"formsubmit"` | Posts to formsubmit.co, which emails you | Arrives by itself; needs the relay working, and the enquiry passes through it |
+
+The relay settings are kept below and still work if you switch back.
+
+### Switching the relay on (only needed for `"formsubmit"` mode)
 
 1. Open the calculator and send **one test enquiry** yourself.
 2. formsubmit.co emails `Blended.mct@gmail.com` asking you to confirm the

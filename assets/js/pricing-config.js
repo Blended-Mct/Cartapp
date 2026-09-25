@@ -251,7 +251,7 @@ const PRICING = {
 
     /* Still used for the "email us directly" link shown if a send fails. */
     email: "Blended.mct@gmail.com",
-    mode: "formsubmit",
+    mode: "mailto",
     subject: "New cart enquiry from the website",
 
     /* The event types offered in the drop-down. `needsCompanyName` asks for
