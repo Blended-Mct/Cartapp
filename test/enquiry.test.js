@@ -247,8 +247,23 @@ test("values are trimmed before they are sent", () => {
 test("formsubmit mode posts to the plain form endpoint, not the fetch one", () => {
   /* The plain endpoint takes an ordinary form post, which is permitted in
      places a cross-origin fetch is blocked outright. */
-  assert.equal(enquiryEndpoint(cfg), "https://formsubmit.co/orders%40example.com");
+  assert.equal(enquiryEndpoint(cfg), "https://formsubmit.co/orders@example.com");
   assert.equal(enquiryEndpoint(cfg).includes("/ajax/"), false);
+});
+
+test("the address keeps its @, because the relay routes on the literal one", () => {
+  /* Encoding it as %40 matched no account: posts were accepted and went
+     nowhere, and not even the activation email was sent. */
+  const url = enquiryEndpoint(cfg);
+  assert.ok(url.includes("@"), "the @ must survive");
+  assert.equal(url.includes("%40"), false, "the @ must not be percent-encoded");
+  assert.ok(url.endsWith("/orders@example.com"));
+});
+
+test("anything else unusual in an address is still escaped", () => {
+  const odd = { ...cfg, enquiry: { ...cfg.enquiry, email: "a b+c/d@example.com" } };
+  const url = enquiryEndpoint(odd);
+  assert.equal(url, "https://formsubmit.co/a%20b%2Bc%2Fd@example.com");
 });
 
 test("the relay fields carry the enquiry and the relay's own settings", () => {

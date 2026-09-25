@@ -175,10 +175,15 @@ function buildEnquiryPayload(details, quote, config) {
    content security policy typically permits `form-action` far more widely than
    `connect-src` — so the form post works in places the fetch simply could not. */
 function enquiryEndpoint(config) {
-  if (config.enquiry.mode === "formsubmit") {
-    return `https://formsubmit.co/${encodeURIComponent(config.enquiry.email)}`;
-  }
-  return null;
+  if (config.enquiry.mode !== "formsubmit") return null;
+
+  /* The address goes in the path with its "@" intact. encodeURIComponent
+     turns "@" into "%40", and the relay routes on the literal address, so an
+     encoded one matches no account: the post is accepted and quietly goes
+     nowhere, not even sending the activation email. Everything else that
+     could appear in an address is still escaped. */
+  const address = encodeURIComponent(config.enquiry.email).replace(/%40/g, "@");
+  return `https://formsubmit.co/${address}`;
 }
 
 /* Everything posted to the relay: the enquiry itself plus the relay's own

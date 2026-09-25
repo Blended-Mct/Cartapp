@@ -286,6 +286,14 @@ The default is currently the working branch. To make `main` the default —
 tidier, and what most people expect — go to **Settings → General → Default
 branch**. The workflow keeps working either way.
 
+### If enquiries stop arriving
+
+Check the address in the posted URL first. It must appear with a literal `@`:
+`https://formsubmit.co/Blended.mct@gmail.com`. Percent-encoded as `%40` it
+matches no account — the post is accepted and quietly goes nowhere, and not even
+the activation email is sent. That is worth knowing because it looks exactly
+like "the relay is down".
+
 ### If a deploy fails
 
 Start a **new** run, or use **Re-run all jobs**. Do not use *Re-run failed
