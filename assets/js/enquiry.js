@@ -177,11 +177,16 @@ function buildEnquiryPayload(details, quote, config) {
 function enquiryEndpoint(config) {
   if (config.enquiry.mode !== "formsubmit") return null;
 
-  /* The address goes in the path with its "@" intact. encodeURIComponent
-     turns "@" into "%40", and the relay routes on the literal address, so an
-     encoded one matches no account: the post is accepted and quietly goes
-     nowhere, not even sending the activation email. Everything else that
-     could appear in an address is still escaped. */
+  /* Prefer the relay's code for the address: it posts to the same inbox
+     without putting the address itself in the page. */
+  const formId = (config.enquiry.formId || "").trim();
+  if (formId) return `https://formsubmit.co/${encodeURIComponent(formId)}`;
+
+  /* Without a code, the address goes in the path with its "@" intact.
+     encodeURIComponent turns "@" into "%40", and the relay routes on the
+     literal address, so an encoded one matches no account: the post is
+     accepted and quietly goes nowhere, not even sending the activation
+     email. Everything else that could appear in an address is still escaped. */
   const address = encodeURIComponent(config.enquiry.email).replace(/%40/g, "@");
   return `https://formsubmit.co/${address}`;
 }

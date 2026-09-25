@@ -251,6 +251,26 @@ test("formsubmit mode posts to the plain form endpoint, not the fetch one", () =
   assert.equal(enquiryEndpoint(cfg).includes("/ajax/"), false);
 });
 
+test("the relay's code is used in place of the address when there is one", () => {
+  const withId = { ...cfg, enquiry: { ...cfg.enquiry, formId: "abc123def456" } };
+  assert.equal(enquiryEndpoint(withId), "https://formsubmit.co/abc123def456");
+  /* The whole point: the address is not in the URL at all. */
+  assert.equal(enquiryEndpoint(withId).includes("@"), false);
+  assert.equal(enquiryEndpoint(withId).includes("example.com"), false);
+});
+
+test("an empty or blank code falls back to the address", () => {
+  ["", "   ", undefined].forEach((formId) => {
+    const c = { ...cfg, enquiry: { ...cfg.enquiry, formId } };
+    assert.equal(enquiryEndpoint(c), "https://formsubmit.co/orders@example.com");
+  });
+});
+
+test("the mailto fallback still reaches the address, code or not", () => {
+  const withId = { ...cfg, enquiry: { ...cfg.enquiry, formId: "abc123def456" } };
+  assert.ok(enquiryMailto(good, quote, withId).startsWith("mailto:orders@example.com?"));
+});
+
 test("the address keeps its @, because the relay routes on the literal one", () => {
   /* Encoding it as %40 matched no account: posts were accepted and went
      nowhere, and not even the activation email was sent. */

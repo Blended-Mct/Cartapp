@@ -286,13 +286,28 @@ The default is currently the working branch. To make `main` the default —
 tidier, and what most people expect — go to **Settings → General → Default
 branch**. The workflow keeps working either way.
 
+### The form's code
+
+`enquiry.formId` is the relay's own code for the confirmed address, so the form
+posts to `https://formsubmit.co/318f8ea…` rather than to the address itself.
+That keeps the address out of the page, where spam harvesters read it.
+
+To send enquiries somewhere else: confirm the new address with the relay and
+paste its new code here. Clear the code and it falls back to posting to
+`enquiry.email`, which still works.
+
+**One caveat.** `enquiry.email` is still in this file, because the *"email us
+directly"* link shown when a send fails needs it — so the address is still
+findable by anyone reading the page source. Removing that link would hide the
+address completely, at the cost of the safety net that catches enquiries when
+the relay is unreachable.
+
 ### If enquiries stop arriving
 
-Check the address in the posted URL first. It must appear with a literal `@`:
-`https://formsubmit.co/Blended.mct@gmail.com`. Percent-encoded as `%40` it
-matches no account — the post is accepted and quietly goes nowhere, and not even
-the activation email is sent. That is worth knowing because it looks exactly
-like "the relay is down".
+Check the posted URL. With no `formId`, the address must appear with a literal
+`@`: percent-encoded as `%40` it matches no account — the post is accepted and
+quietly goes nowhere, and not even the activation email is sent. That is worth
+knowing because it looks exactly like "the relay is down".
 
 ### If a deploy fails
 

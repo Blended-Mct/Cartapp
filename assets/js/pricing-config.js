@@ -240,6 +240,16 @@ const PRICING = {
      page yourself, then click the confirmation link formsubmit.co emails to
      the address below. Until you do, enquiries are not delivered.           */
   enquiry: {
+    /* The relay's own code for this address, given when the address was
+       confirmed. Posting to the code rather than the address keeps the
+       address out of the page, where spam harvesters read it.
+
+       If it is ever lost, leave it empty: posting falls back to the address
+       below, which still works. To change where enquiries go, confirm the new
+       address with the relay and paste its new code here. */
+    formId: "318f8eacc6d7babb2e8ba9b497bf9679",
+
+    /* Still used for the "email us directly" link shown if a send fails. */
     email: "Blended.mct@gmail.com",
     mode: "formsubmit",
     subject: "New cart enquiry from the website",
