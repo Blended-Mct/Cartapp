@@ -213,6 +213,34 @@ function buildRelayFields(details, quote, config) {
   };
 }
 
+/* The shop's WhatsApp number, reduced to the digits wa.me wants: country code
+   first, no "+", no spaces or brackets. Returns "" when none is set, which is
+   how the page knows to fall back to email. */
+function whatsappNumber(config) {
+  return String((config.enquiry && config.enquiry.whatsapp) || "").replace(/\D/g, "");
+}
+
+/* -----------------------------------------------------------------------------
+   enquiryWhatsApp(details, quote, config, lang)
+
+   Opens WhatsApp with the enquiry already typed, addressed to the shop. The
+   compact copy is used, as for email: WhatsApp will carry a long message, but
+   a link that has to survive the address bar should not rely on it.
+
+   Returns null when no number is set, so the caller falls back to email rather
+   than opening a broken link.
+--------------------------------------------------------------------------- */
+function enquiryWhatsApp(details, quote, config, lang) {
+  const number = whatsappNumber(config);
+  if (!number) return null;
+
+  const greeting = ENQUIRY_I18N.localised(config.messages || {}, "greeting", lang || "en");
+  const body = buildEnquiryText(details, quote, config, { compact: true });
+  const text = greeting ? `${greeting}\n\n${body}` : body;
+
+  return `https://wa.me/${number}?text=${encodeURIComponent(text)}`;
+}
+
 /* The mailto: link used in "mailto" mode, and as the fallback when a send
    fails — the enquiry is never lost, the customer can always send it. */
 function enquiryMailto(details, quote, config) {
@@ -228,6 +256,7 @@ function enquiryMailto(details, quote, config) {
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     validateEnquiry, buildEnquiryText, buildEnquiryPayload,
-    enquiryEndpoint, enquiryMailto, buildRelayFields, eventTypeById, isoDate,
+    enquiryEndpoint, enquiryMailto, enquiryWhatsApp, whatsappNumber,
+    buildRelayFields, eventTypeById, isoDate,
   };
 }

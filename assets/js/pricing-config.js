@@ -64,6 +64,10 @@ const PRICING = {
     chooseLater_ar:
       "تُختار النكهات والإضافات لاحقًا بعد تأكيد الحجز — " +
       "لا حاجة لتحديدها الآن.",
+
+    /* The first line of the WhatsApp message, before the details. */
+    greeting: "Hello Blended — I would like to book a cart.",
+    greeting_ar: "مرحبًا بلند — أودّ حجز عربة.",
   },
 
   /* --- Where the event is ----------------------------------------------
@@ -251,7 +255,16 @@ const PRICING = {
 
     /* Still used for the "email us directly" link shown if a send fails. */
     email: "Blended.mct@gmail.com",
-    mode: "mailto",
+    /* "whatsapp" opens WhatsApp with the enquiry already typed, addressed to
+       the number below. "mailto" does the same with the customer's email app.
+       "formsubmit" posts to the relay. WhatsApp falls back to email on its own
+       if no number is set, so the number is the only thing needed to switch. */
+    mode: "whatsapp",
+
+    /* Your WhatsApp number in full international form, digits only: country
+       code first, no "+", no spaces. Oman is 968, so a number written
+       9123 4567 becomes "96891234567". Leave empty to fall back to email. */
+    whatsapp: "",
     subject: "New cart enquiry from the website",
 
     /* The event types offered in the drop-down. `needsCompanyName` asks for

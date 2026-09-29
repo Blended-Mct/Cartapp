@@ -105,6 +105,12 @@ const STRINGS = {
       "written, addressed to us. Press send and it reaches us. {later}" +
       "If nothing opened, use the link below.",
     openEmailAgain: "Open my email again",
+    sentTitleWhatsApp: "Almost there — press send in WhatsApp.",
+    sentBodyWhatsApp:
+      "{name}WhatsApp should have opened with the whole enquiry already typed, " +
+      "addressed to us. Press send and it reaches us, and we will reply in the " +
+      "same chat. {later}If nothing opened, use the link below.",
+    openWhatsAppAgain: "Open WhatsApp again",
     namePrefix: "{name}, ",
     sentBody: "{name}we have your enquiry and will be in touch on {phone} with a " +
               "confirmed quote. {later}Your estimate is still on screen — print it " +
@@ -226,6 +232,12 @@ const STRINGS = {
       "ومُوجَّهًا إلينا. اضغط إرسال ليصلنا. {later}" +
       "وإن لم يفتح شيء، استخدم الرابط أدناه.",
     openEmailAgain: "افتح بريدي مرة أخرى",
+    sentTitleWhatsApp: "بقيت خطوة — اضغط إرسال في واتساب.",
+    sentBodyWhatsApp:
+      "{name}يُفترض أن يكون واتساب قد فُتح ومعه طلبك كاملًا ومُوجَّهًا إلينا. " +
+      "اضغط إرسال ليصلنا، وسنردّ عليك في المحادثة نفسها. {later}" +
+      "وإن لم يفتح شيء، استخدم الرابط أدناه.",
+    openWhatsAppAgain: "افتح واتساب مرة أخرى",
     namePrefix: "{name}، ",   /* the Arabic comma, not the Latin one */
     sentBody: "{name}استلمنا طلبك وسنتواصل معك على {phone} بعرض سعر مؤكّد. " +
               "{later}التقدير ما زال ظاهرًا على الشاشة — يمكنك طباعته إن أردت نسخة.",

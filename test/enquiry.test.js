@@ -8,7 +8,7 @@ const { test } = require("node:test");
 const { calculateQuote } = require("../assets/js/calculator.js");
 const {
   validateEnquiry, buildEnquiryText, buildEnquiryPayload, buildRelayFields,
-  enquiryEndpoint, enquiryMailto, eventTypeById,
+  enquiryEndpoint, enquiryMailto, enquiryWhatsApp, whatsappNumber, eventTypeById,
 } = require("../assets/js/enquiry.js");
 
 const cfg = {
@@ -356,4 +356,100 @@ test("eventTypeById returns null rather than guessing", () => {
   assert.equal(eventTypeById("private", cfg).name, "Private event");
   assert.equal(eventTypeById("nope", cfg), null);
   assert.equal(eventTypeById("", cfg), null);
+});
+
+/* --- Handing the enquiry to WhatsApp ------------------------------------ */
+
+const waCfg = { ...cfg, enquiry: { ...cfg.enquiry, whatsapp: "+968 9123 4567" } };
+
+test("the number is reduced to the digits wa.me wants", () => {
+  assert.equal(whatsappNumber(waCfg), "96891234567");
+  ["96891234567", "+968 9123 4567", "(968) 9123-4567", "+968-9123-4567"].forEach(
+    (written) => {
+      const c = { ...cfg, enquiry: { ...cfg.enquiry, whatsapp: written } };
+      assert.equal(whatsappNumber(c), "96891234567", `${written} should normalise`);
+    }
+  );
+});
+
+test("no number set means no link, so the caller can fall back to email", () => {
+  assert.equal(whatsappNumber(cfg), "");
+  assert.equal(enquiryWhatsApp(good, quote, cfg, "en"), null);
+  ["", "   ", undefined].forEach((whatsapp) => {
+    const c = { ...cfg, enquiry: { ...cfg.enquiry, whatsapp } };
+    assert.equal(enquiryWhatsApp(good, quote, c, "en"), null);
+  });
+});
+
+test("the link opens a chat with the shop, carrying the enquiry", () => {
+  const link = enquiryWhatsApp(good, quote, waCfg, "en");
+  assert.ok(link.startsWith("https://wa.me/96891234567?text="));
+  const text = decodeURIComponent(link.split("?text=")[1]);
+  assert.match(text, /Name: Aisha Al Said/);
+  assert.match(text, /Phone: 9123 4567/);
+  assert.match(text, /Event date: 2026-11-14/);
+  assert.match(text, /TOTAL: OMR 145\.000/);
+});
+
+test("the message opens with the greeting, then the details", () => {
+  const withGreeting = {
+    ...waCfg,
+    messages: { ...waCfg.messages, greeting: "Hello Blended — I would like to book." },
+  };
+  const text = decodeURIComponent(
+    enquiryWhatsApp(good, quote, withGreeting, "en").split("?text=")[1]
+  );
+  assert.ok(text.startsWith("Hello Blended — I would like to book.\n\nCUSTOMER"));
+});
+
+test("the greeting follows the language the customer used", () => {
+  const bilingual = {
+    ...waCfg,
+    messages: { ...waCfg.messages, greeting: "Hello", greeting_ar: "مرحبًا" },
+  };
+  const ar = decodeURIComponent(
+    enquiryWhatsApp(good, quote, bilingual, "ar").split("?text=")[1]
+  );
+  assert.ok(ar.startsWith("مرحبًا"));
+  /* The enquiry itself stays English — the business reads it. */
+  assert.match(ar, /Name: Aisha Al Said/);
+});
+
+test("a missing greeting just leaves the details", () => {
+  const bare = { ...waCfg, messages: {} };
+  const text = decodeURIComponent(
+    enquiryWhatsApp(good, quote, bare, "en").split("?text=")[1]
+  );
+  assert.ok(text.startsWith("CUSTOMER"));
+});
+
+test("the whatsapp link uses the compact copy, and stays a sane length", () => {
+  const link = enquiryWhatsApp(good, quote, waCfg, "en");
+  const text = decodeURIComponent(link.split("?text=")[1]);
+  assert.equal(/not a binding quotation/.test(text), false);
+  assert.ok(link.length < 2000, `link was ${link.length} characters`);
+});
+
+test("the largest order the calculator can build still fits", () => {
+  const { PRICING } = require("../assets/js/pricing-config.js");
+  const real = { ...PRICING, enquiry: { ...PRICING.enquiry, whatsapp: "96891234567" } };
+  const big = calculateQuote(
+    {
+      cartId: "blend",
+      quantities: {
+        gelato: 300, softserve: 250, espresso: 100, creamy_espresso: 80,
+        matcha: 120, creamy_matcha: 60, other_drinks: 90,
+      },
+      locationId: "barka", hours: 10,
+      cupExtras: ["extra_toppings"],
+      flatExtras: ["female_server", "branded_cart"],
+      extraQuantities: { cookies: 400, branded_cups: 1000 },
+    },
+    real
+  );
+  const link = enquiryWhatsApp(
+    { ...good, notes: "A long note about the venue, the timings and the parking." },
+    big, real, "en"
+  );
+  assert.ok(link.length < 2000, `link was ${link.length} characters`);
 });

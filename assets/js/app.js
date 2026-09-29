@@ -648,8 +648,8 @@
   /* What was last sent, so the panel can be redrawn if the language changes. */
   let sentState = null;
 
-  function showSent(details, mailtoLink) {
-    sentState = { details, mailtoLink: mailtoLink || null };
+  function showSent(details, handoff) {
+    sentState = { details, handoff: handoff || null };
     el.enquiryFields.hidden = true;
     el.sentPanel.hidden = false;
     renderSentPanel();
@@ -658,7 +658,7 @@
 
   function renderSentPanel() {
     if (!sentState) return;
-    const { details, mailtoLink } = sentState;
+    const { details, handoff } = sentState;
     const title = el.sentPanel.querySelector(".sent-title");
     const name = (details.name || "").trim().split(/\s+/)[0];
     const later = localised(cfg.messages, "chooseLater", lang);
@@ -668,13 +668,29 @@
       later: later ? `${later} ` : "",
     };
 
-    /* With the customer's own email app doing the sending, the enquiry is not
-       on its way until they press send — so the panel must not say it is. */
-    if (mailtoLink) {
-      title.textContent = say("sentTitleMailto");
-      el.sentBody.textContent = say("sentBodyMailto", vars);
-      el.openMailAgain.href = mailtoLink;
-      el.openMailAgain.textContent = say("openEmailAgain");
+    /* With the customer's own app doing the sending — WhatsApp or email — the
+       enquiry is not on its way until they press send, so the panel must not
+       say it is. */
+    if (handoff) {
+      const viaWhatsApp = handoff.channel === "whatsapp";
+
+      /* Switching language after sending redraws this panel, so the link is
+         rebuilt with it: the greeting should be in the language on screen,
+         not the one that happened to be chosen when the button was pressed. */
+      if (viaWhatsApp) {
+        const rebuilt = enquiryWhatsApp(
+          details, calculateQuote(readInput(), cfg, "en"), cfg, lang
+        );
+        if (rebuilt) handoff.link = rebuilt;
+      }
+      title.textContent = say(viaWhatsApp ? "sentTitleWhatsApp" : "sentTitleMailto");
+      el.sentBody.textContent = say(
+        viaWhatsApp ? "sentBodyWhatsApp" : "sentBodyMailto", vars
+      );
+      el.openMailAgain.href = handoff.link;
+      el.openMailAgain.textContent = say(
+        viaWhatsApp ? "openWhatsAppAgain" : "openEmailAgain"
+      );
       el.openMailAgain.hidden = false;
     } else {
       title.textContent = say("sentTitle");
@@ -705,13 +721,22 @@
       return;
     }
 
-    /* In mailto mode the customer's own email app does the sending. The
-       enquiry is written in English whatever language they used, because the
-       business reads it. */
-    if (cfg.enquiry.mode === "mailto") {
-      const link = enquiryMailto(details, calculateQuote(readInput(), cfg, "en"), cfg);
-      window.location.href = link;
-      showSent(details, link);
+    /* WhatsApp and email both hand the enquiry to an app the customer already
+       has. The enquiry itself is written in English whatever language they
+       used on the page, because the business is the one reading it. */
+    const englishQuote = calculateQuote(readInput(), cfg, "en");
+
+    if (cfg.enquiry.mode === "whatsapp" || cfg.enquiry.mode === "mailto") {
+      /* WhatsApp needs a number; without one, email rather than a dead link. */
+      const whatsapp =
+        cfg.enquiry.mode === "whatsapp"
+          ? enquiryWhatsApp(details, englishQuote, cfg, lang)
+          : null;
+      const link = whatsapp || enquiryMailto(details, englishQuote, cfg);
+      const channel = whatsapp ? "whatsapp" : "email";
+
+      handOff(link, channel);
+      showSent(details, { link, channel });
       return;
     }
 
@@ -733,6 +758,33 @@
     } finally {
       setSending(false);
     }
+  }
+
+  /* -----------------------------------------------------------------------
+     Hands the enquiry to the customer's own app.
+
+     A mailto: link is given to the operating system and the page stays where
+     it is. A WhatsApp link is an ordinary web address, so navigating to it
+     would take the customer off the calculator — losing the estimate and the
+     "press send" message. It opens alongside instead, and only falls back to
+     navigating if the browser refuses to open it.
+  --------------------------------------------------------------------- */
+  function handOff(link, channel) {
+    if (channel !== "whatsapp") {
+      window.location.href = link;
+      return;
+    }
+    /* `noopener` is not passed here on purpose: with it, window.open returns
+       null by specification, which is indistinguishable from the browser
+       refusing to open the tab — so the fallback below would fire every time
+       and take the customer off the calculator. The handle is severed
+       immediately instead, which gets the same protection. */
+    const opened = window.open(link, "_blank");
+    if (opened) {
+      try { opened.opener = null; } catch (err) { /* already severed */ }
+      return;
+    }
+    window.location.href = link;
   }
 
   /* The page the relay sends the frame back to once it has the enquiry.

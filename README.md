@@ -144,6 +144,18 @@ There are three kinds, and which one to use depends on how you charge:
   way, counted on ice cream cups only.
 - **`flatExtras`** are charged once, whatever the order size.
 
+### Why there is no password, and where submissions live
+
+Enquiries are not stored in this website — they go to WhatsApp, and to your
+inbox in email mode. That is deliberate: it is the reason the admin page can sit
+on a public static site safely. A password here would be theatre, since the
+check would be written in public source and could simply be skipped.
+
+Your real security is WhatsApp's and Google's, on accounts only you can open.
+If you later want a proper list — totals, exports, a history that survives a
+lost phone — that needs somewhere server-side to keep them, which is a separate
+piece of work.
+
 ### What the customer must fill in
 
 The **event date** is asked for first and is required — it is the thing that
@@ -183,10 +195,22 @@ delete its block from the list.
 
 **Read this once — there is a step only you can do.**
 
-Pressing *Send my enquiry* opens the customer's own email app with the whole
-enquiry already written and addressed to `Blended.mct@gmail.com`. They press
-send, and it arrives as an ordinary email from them — so you can simply reply to
-it. No third party sees anything, and there is nothing to keep working.
+Pressing *Send my enquiry* opens **WhatsApp** with the whole enquiry already
+typed, addressed to the shop's number. The customer presses send, it arrives as
+a normal message from them, and you reply in the same chat — which also means
+your WhatsApp chat list is the record of enquiries, searchable and already
+behind your own login.
+
+WhatsApp opens in a new tab rather than replacing the page, so the estimate
+stays on screen behind it.
+
+**Set `enquiry.whatsapp`** to your number in full international form, digits
+only — Oman is 968, so `9123 4567` becomes `"96891234567"`. Until it is set,
+the button falls back to email, so nothing is broken in the meantime.
+
+The email fallback opens the customer's own mail app with the same enquiry
+addressed to `Blended.mct@gmail.com`. No third party sees anything either way,
+and there is nothing to keep working.
 
 The cost is one extra tap, and it depends on the customer's phone having email
 set up. The page says so plainly rather than claiming the enquiry is on its way:
@@ -197,7 +221,8 @@ mail app again if nothing happened.
 
 | Mode | What happens | Trade-off |
 |---|---|---|
-| `"mailto"` *(current)* | Opens the customer's email app | Nothing to set up or maintain; the customer must press send |
+| `"whatsapp"` *(current)* | Opens WhatsApp with the enquiry typed | Most likely to reach you, and the chat is the record; the customer must press send |
+| `"mailto"` | Opens the customer's email app | Same idea, but depends on their phone having email set up |
 | `"formsubmit"` | Posts to formsubmit.co, which emails you | Arrives by itself; needs the relay working, and the enquiry passes through it |
 
 The relay settings are kept below and still work if you switch back.
