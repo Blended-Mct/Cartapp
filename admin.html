@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blended — Price admin</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#1d6828">
+<link rel="icon" href="assets/img/blended-logo.png">
+<link rel="stylesheet" href="assets/css/font.css">
+<link rel="stylesheet" href="assets/css/styles.css">
+<link rel="stylesheet" href="assets/css/admin.css">
+</head>
+<body class="admin">
+
+<header class="site-header">
+  <div class="wrap header-inner">
+    <div>
+      <img class="brand-logo" src="assets/img/blended-logo.png" alt="Blended"
+           onerror="this.remove()">
+      <p class="tagline">Price admin</p>
+    </div>
+    <div class="header-actions">
+      <a class="lang-toggle" href="index.html">Back to the calculator</a>
+    </div>
+  </div>
+</header>
+
+<main class="wrap admin-layout">
+
+  <div class="admin-main">
+    <h1 class="page-title">Prices &amp; options</h1>
+    <p class="page-intro">
+      Change anything here, try it on the calculator, then save the file.
+      Nothing changes for customers until you publish it.
+    </p>
+
+    <p class="admin-warning">
+      This page only edits prices. It is part of the public website, so treat
+      everything on it as public — which it already is, since customers see
+      these prices anyway. No customer details are stored here or anywhere in
+      this site.
+    </p>
+
+    <div id="sections"></div>
+  </div>
+
+  <aside class="admin-side" id="side">
+    <div class="panel admin-actions">
+      <p class="quote-eyebrow">Your changes</p>
+      <p class="admin-status" id="status">No changes yet.</p>
+
+      <button type="button" class="btn btn-primary" id="previewBtn">
+        Try it on the calculator
+      </button>
+      <button type="button" class="btn btn-ghost admin-block" id="stopPreviewBtn" hidden>
+        Stop trying it out
+      </button>
+
+      <hr class="admin-rule">
+
+      <p class="admin-label">When you are happy</p>
+      <button type="button" class="btn btn-ghost admin-block" id="downloadBtn">
+        Download pricing-config.js
+      </button>
+      <button type="button" class="btn btn-ghost admin-block" id="copyBtn">
+        Copy the file
+      </button>
+      <p class="admin-hint" id="saveHint">
+        Save it over <code>assets/js/pricing-config.js</code> in your repository
+        and the live site updates by itself.
+      </p>
+
+      <hr class="admin-rule">
+
+      <button type="button" class="btn btn-ghost admin-block" id="resetBtn">
+        Undo all my changes
+      </button>
+    </div>
+  </aside>
+
+</main>
+
+<footer class="site-footer">
+  <p class="wrap">Blended — price admin. Prices only; no customer data.</p>
+</footer>
+
+<script src="assets/js/i18n.js"></script>
+<script src="assets/js/pricing-config.js"></script>
+<script src="assets/js/calculator.js"></script>
+<script src="assets/js/config-writer.js"></script>
+<script src="assets/js/admin.js"></script>
+</body>
+</html>

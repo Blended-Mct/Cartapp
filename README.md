@@ -12,10 +12,32 @@ It is a plain website: no server, no database, no accounts, no build step. Open
 
 ## Changing your prices
 
-**Everything you charge lives in one file: [`assets/js/pricing-config.js`](assets/js/pricing-config.js).**
+There are two ways, and they edit the same thing.
 
-Open it, change the numbers, save, reload the page. You never need to touch any
-other file. Every setting has a comment above it explaining what it does.
+### The admin page
+
+**[`admin.html`](admin.html)** — live at
+`https://blended-mct.github.io/Cartapp/admin.html`. Add, remove and reprice
+menu items, extras, areas and carts in a form, try the result on the real
+calculator, then download the file and save it over
+`assets/js/pricing-config.js`.
+
+*Trying it out* keeps the edited prices in your own browser only. Customers
+carry on seeing the published ones, and the calculator shows you a banner while
+a preview is running, with one press to clear it.
+
+The page is part of the public site, so anyone who finds the address can open
+it. That is fine: it only edits prices, which customers see anyway, and it saves
+nothing — every change stays in your browser until you publish the file
+yourself. **No customer data passes through it, or exists anywhere in this
+site.** A password here would be theatre: on a static site the page's own code
+is public, so a check written in it can be read and skipped.
+
+### By hand
+
+**[`assets/js/pricing-config.js`](assets/js/pricing-config.js)** — open it,
+change the numbers, save. Every setting has a comment above it. The admin page
+writes this same file, comments and all, so the two can be mixed freely.
 
 Amounts are in Omani Rials to 3 decimals (baisa): `1` is 1.000 OMR, `0.25` is
 250 baisa.
@@ -351,6 +373,9 @@ assets/css/font.css            the display font, embedded
 assets/fonts/                  the font file and its licence
 assets/img/blended-logo.png    the wordmark, shown in the header
 assets/img/blended-shopfront.webp  the illustration at the top of the form
+admin.html                     the price admin page
+assets/js/admin.js             its editor
+assets/js/config-writer.js     writes pricing-config.js back out
 assets/js/i18n.js              every phrase, in English and Arabic
 assets/js/pricing-config.js    ← your prices, the only file you need to edit
 assets/js/calculator.js        the pricing maths
@@ -359,6 +384,7 @@ assets/js/app.js               builds the form and keeps the estimate live
 test/calculator.test.js        tests for the pricing rules
 test/enquiry.test.js           tests for the enquiry form
 test/i18n.test.js              tests that nothing is left untranslated
+test/config-writer.test.js     tests that saved prices read back unchanged
 ```
 
 ## The two languages

@@ -1,0 +1,131 @@
+/* =============================================================================
+   Price admin — leans on the calculator's tokens so the two feel like one site
+   ========================================================================== */
+
+.admin-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+  padding-top: 24px;
+  padding-bottom: 48px;
+  align-items: start;
+}
+@media (min-width: 960px) {
+  .admin-layout { grid-template-columns: minmax(0, 1fr) 320px; gap: 24px; }
+  .admin-side { position: sticky; top: 24px; }
+}
+
+.admin-warning {
+  margin: 0 0 24px;
+  padding: 12px 14px;
+  border: 1px solid var(--warn-border);
+  border-radius: var(--radius-sm);
+  background: var(--warn-bg);
+  color: var(--warn-text);
+  font-size: .85rem;
+}
+
+.admin-section { margin-bottom: 20px; }
+.admin-section h2 {
+  margin: 0 0 4px;
+  font-family: var(--font-display);
+  font-size: 1.3rem; font-weight: 800;
+}
+.admin-blurb { margin: 0 0 18px; font-size: .85rem; color: var(--text-muted); }
+
+/* --- A row being edited ------------------------------------------------- */
+.admin-row {
+  padding: 16px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  margin-bottom: 12px;
+}
+.admin-row-head {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 14px; padding-bottom: 10px;
+  border-bottom: 1px dashed var(--border);
+}
+.admin-row-head strong { font-size: 1rem; }
+.admin-code {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: .72rem; font-weight: 700;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.admin-remove {
+  margin-inline-start: auto;
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--danger);
+  font: inherit; font-size: .8rem; font-weight: 650;
+  cursor: pointer;
+}
+.admin-remove:hover { border-color: var(--danger); }
+
+/* --- Fields -------------------------------------------------------------- */
+.admin-grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
+@media (min-width: 560px) { .admin-grid { grid-template-columns: 1fr 1fr; } }
+
+.admin-field.is-wide { grid-column: 1 / -1; }
+.admin-field label {
+  display: block; margin-bottom: 5px;
+  font-size: .82rem; font-weight: 600; color: var(--text-muted);
+}
+.admin-field input,
+.admin-field select {
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+.admin-field input:focus-visible,
+.admin-field select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.admin-help { margin: 5px 0 0; font-size: .75rem; color: var(--text-muted); }
+.admin-checks { display: flex; gap: 14px; flex-wrap: wrap; padding-top: 6px; }
+
+/* --- The side panel ------------------------------------------------------ */
+.admin-actions .btn { margin-top: 10px; }
+.admin-block { width: 100%; }
+.admin-status { margin: 6px 0 14px; font-size: .9rem; color: var(--text-muted); }
+.admin-status.is-dirty { color: var(--accent); font-weight: 650; }
+.admin-label {
+  margin: 0; font-size: .75rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .07em; color: var(--text-muted);
+}
+.admin-hint { margin: 10px 0 0; font-size: .78rem; color: var(--text-muted); }
+.admin-hint code {
+  font-size: .95em;
+  background: var(--surface-2);
+  padding: 1px 5px; border-radius: 5px;
+}
+.admin-rule { margin: 20px 0; border: 0; border-top: 1px solid var(--border); }
+
+/* --- The banner the calculator shows while a preview is on --------------- */
+.preview-banner {
+  position: sticky; top: 0; z-index: 30;
+  padding: 10px 16px;
+  background: var(--warn-bg);
+  border-bottom: 1px solid var(--warn-border);
+  color: var(--warn-text);
+  font-size: .85rem; font-weight: 600;
+  display: flex; align-items: center; justify-content: center; gap: 14px;
+  flex-wrap: wrap;
+}
+.preview-banner button {
+  padding: 5px 12px;
+  border: 1px solid var(--warn-border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit; font-size: .8rem; font-weight: 650;
+  cursor: pointer;
+}
+@media print { .preview-banner { display: none !important; } }

@@ -4,8 +4,53 @@
 (function () {
   "use strict";
 
-  const cfg = PRICING;
   const $ = (id) => document.getElementById(id);
+
+  /* -----------------------------------------------------------------------
+     The admin page can park an edited set of prices here so they can be
+     tried on the real calculator before being published. It lives in this
+     browser only: it is never sent anywhere, no other visitor can see it, and
+     a customer who has never opened the admin page has nothing to load. The
+     banner makes it plain that the prices on screen are not the published
+     ones, and clears it in one press.
+  --------------------------------------------------------------------- */
+  const PREVIEW_KEY = "cartapp-preview-config";
+
+  function previewConfig() {
+    let raw = null;
+    try { raw = localStorage.getItem(PREVIEW_KEY); } catch (e) { return null; }
+    if (!raw) return null;
+    try {
+      const parsed = JSON.parse(raw);
+      /* Anything that is not a usable config is ignored rather than trusted. */
+      if (!parsed || !Array.isArray(parsed.carts) || !Array.isArray(parsed.menu)) {
+        return null;
+      }
+      return parsed;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  const preview = previewConfig();
+  const cfg = preview || PRICING;
+
+  function showPreviewBanner() {
+    const bar = document.createElement("div");
+    bar.className = "preview-banner";
+    const text = document.createElement("span");
+    text.textContent =
+      "You are trying out unpublished prices. Customers still see the real ones.";
+    const stop = document.createElement("button");
+    stop.type = "button";
+    stop.textContent = "Show the real prices";
+    stop.addEventListener("click", () => {
+      try { localStorage.removeItem(PREVIEW_KEY); } catch (e) { /* ignore */ }
+      window.location.reload();
+    });
+    bar.append(text, stop);
+    document.body.prepend(bar);
+  }
 
   /* The language in play. A visitor's choice is remembered on their device. */
   let lang = cfg.defaultLanguage || "en";
@@ -859,6 +904,8 @@
 
   /* --- Wire everything up ---------------------------------------------- */
   function init() {
+    if (preview) showPreviewBanner();
+
     el.hours.min = cfg.duration.includedHours;
     el.hours.max = cfg.duration.maxHours;
     el.hours.value = cfg.duration.includedHours;

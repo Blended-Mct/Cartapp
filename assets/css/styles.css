@@ -83,6 +83,11 @@
 }
 * { box-sizing: border-box; }
 
+/* Any rule that sets `display` beats the browser's own [hidden] rule, so a
+   hidden button with a .btn class stays on screen. This puts that right for
+   every element rather than one at a time. */
+[hidden] { display: none !important; }
+
 body {
   margin: 0;
   background: var(--bg);
